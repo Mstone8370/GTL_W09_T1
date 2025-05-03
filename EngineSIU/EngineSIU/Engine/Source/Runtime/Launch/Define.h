@@ -31,7 +31,7 @@ struct FMaterialSubset
     FString MaterialName; // Material Name
 };
 
-struct FStaticMaterial
+struct FMeshMaterial
 {
     class UMaterial* Material;
     FName MaterialSlotName;
@@ -66,6 +66,83 @@ struct FObjInfo
     TArray<FMaterialSubset> MaterialSubsets;
 };
 
+struct FFbxVertex
+{
+    FVector Position;
+    FVector Normal;
+    FVector2D UV;
+    FVector Color;
+    FVector Tangent;
+    uint32 BoneIndices[4];
+    float BoneWeights[4];
+};
+
+struct FFbxMesh
+{
+    FString Name;
+    // Vertex, UV, Normal List
+    TArray<FFbxVertex> Vertices;
+    TArray<uint32> Indices;
+    TArray<FMaterialSubset> MaterialSubsets;
+};
+
+struct FFbxBone
+{
+    FString Name;
+    int ParentIndex;
+    FMatrix SkinningMatrix;
+    // (필요시 글로벌/로컬 트랜스폼, 본 인덱스 등 추가)
+};
+
+struct FTextureInfo
+{
+    FString TextureName;
+    FWString TexturePath;
+    bool bIsSRGB;
+};
+
+struct FMaterialInfo
+{
+    FString MaterialName;  // newmtl: Material Name.
+
+    uint32 TextureFlag = 0;
+
+    bool bTransparent = false; // Has alpha channel?
+
+    FVector DiffuseColor = FVector(0.7f, 0.7f, 0.7f);      // Kd: Diffuse Color
+    FVector SpecularColor = FVector(0.5f, 0.5f, 0.5f);     // Ks: Specular Color
+    FVector AmbientColor = FVector(0.01f, 0.01f, 0.01f);   // Ka: Ambient Color
+    FVector EmissiveColor = FVector::ZeroVector;                   // Ke: Emissive Color
+
+    float SpecularExponent = 250.f;                                // Ns: Specular Power
+    float IOR = 1.5f;                                              // Ni: Index of Refraction
+    float Transparency = 0.f;                                      // d or Tr: Transparency of surface
+    float BumpMultiplier = 1.f;                                    // -bm: Bump Multiplier
+    uint32 IlluminanceModel;                                       // illum: illumination Model between 0 and 10.
+
+    float Metallic = 0.0f;                                         // Pm: Metallic
+    float Roughness = 0.5f;                                        // Pr: Roughness
+
+    /* Texture */
+    TArray<FTextureInfo> TextureInfos;
+};
+
+//Fbx RawData
+struct FFbxInfo
+{
+    FWString ObjectName; // FBX File Name. Path + FileName.fbx
+    FWString FilePath; // FBX File Paths
+    FString DisplayName; // Display Name
+    FString MatName; // FBX MTL File Name
+
+    // Group
+    uint32 NumOfGroup = 0; // token 'g' or 'o'
+    TArray<FString> GroupName;
+    TArray<FFbxMesh> Meshes;
+    TArray<FFbxBone> Bones;
+    TArray<FMaterialInfo> Materials;
+};
+
 enum class EMaterialTextureFlags : uint16
 {
     MTF_Diffuse      = 1 << 0,
@@ -92,39 +169,6 @@ enum class EMaterialTextureSlots : uint8
     MTS_Metallic     = 7,
     MTS_Roughness    = 8,
     MTS_MAX,
-};
-
-struct FTextureInfo
-{
-    FString TextureName;
-    FWString TexturePath;
-    bool bIsSRGB;
-};
-
-struct FObjMaterialInfo
-{
-    FString MaterialName;  // newmtl: Material Name.
-
-    uint32 TextureFlag = 0;
-
-    bool bTransparent = false; // Has alpha channel?
-
-    FVector DiffuseColor = FVector(0.7f, 0.7f, 0.7f);      // Kd: Diffuse Color
-    FVector SpecularColor = FVector(0.5f, 0.5f, 0.5f);     // Ks: Specular Color
-    FVector AmbientColor = FVector(0.01f, 0.01f, 0.01f);   // Ka: Ambient Color
-    FVector EmissiveColor = FVector::ZeroVector;                   // Ke: Emissive Color
-
-    float SpecularExponent = 250.f;                                // Ns: Specular Power
-    float IOR = 1.5f;                                              // Ni: Index of Refraction
-    float Transparency = 0.f;                                      // d or Tr: Transparency of surface
-    float BumpMultiplier = 1.f;                                    // -bm: Bump Multiplier
-    uint32 IlluminanceModel;                                       // illum: illumination Model between 0 and 10.
-
-    float Metallic = 0.0f;                                         // Pm: Metallic
-    float Roughness = 0.5f;                                        // Pr: Roughness
-    
-    /* Texture */
-    TArray<FTextureInfo> TextureInfos;
 };
 
 struct FVertexTexture
