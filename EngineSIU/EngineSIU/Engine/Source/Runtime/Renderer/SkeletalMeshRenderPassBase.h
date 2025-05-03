@@ -1,22 +1,22 @@
 #pragma once
 #include "IRenderPass.h"
-#include "RendererHelpers.h"
 #include "Container/Array.h"
 
-class UStaticMeshComponent;
 class UMaterial;
+struct FSkeletalMeshRenderData;
+class USkeletalMeshComponent;
 
 struct FMatrix;
 struct FVector4;
-struct FMeshMaterial;
+struct FStaticMaterial;
 struct FStaticMeshRenderData;
 struct ID3D11Buffer;
 
-class FStaticMeshRenderPassBase : public IRenderPass
+class FSkeletalMeshRenderPassBase : public IRenderPass
 {
 public:
-    FStaticMeshRenderPassBase();
-    virtual ~FStaticMeshRenderPassBase() override;
+    FSkeletalMeshRenderPassBase();
+    virtual ~FSkeletalMeshRenderPassBase() override;
 
     virtual void Initialize(FDXDBufferManager* InBufferManager, FGraphicsDevice* InGraphics, FDXDShaderManager* InShaderManager) override;
 
@@ -29,7 +29,7 @@ public:
 protected:
     virtual void CreateResource() {}
 
-    virtual void ReleaseShader() {}
+    virtual void ReleaseResource() {}
 
     virtual void PrepareRenderPass(const std::shared_ptr<FEditorViewportClient>& Viewport) = 0;
 
@@ -37,13 +37,13 @@ protected:
 
     virtual void Render_Internal(const std::shared_ptr<FEditorViewportClient>& Viewport);
 
-    void RenderAllStaticMeshes(const std::shared_ptr<FEditorViewportClient>& Viewport);
+    void RenderAllSkeletalMeshes(const std::shared_ptr<FEditorViewportClient>& Viewport);
 
-    void RenderPrimitive(FStaticMeshRenderData* RenderData, TArray<FMeshMaterial*> Materials, TArray<UMaterial*> OverrideMaterials, int32 SelectedSubMeshIndex) const;
+    void RenderSkeletalMesh(const FSkeletalMeshRenderData* RenderData) const;
 
-    void RenderPrimitive(ID3D11Buffer* Buffer, UINT VerticesNum) const;
+    void RenderSkeletalMesh(ID3D11Buffer* Buffer, UINT VerticesNum) const;
 
-    void RenderPrimitive(ID3D11Buffer* VertexBuffer, ID3D11Buffer* IndexBuffer, UINT IndicesNum) const;
+    void RenderSkeletalMesh(ID3D11Buffer* VertexBuffer, ID3D11Buffer* IndexBuffer, UINT IndicesNum) const;
 
     void UpdateObjectConstant(const FMatrix& WorldMatrix, const FVector4& UUIDColor, bool bIsSelected) const;
 
@@ -51,6 +51,5 @@ protected:
     FGraphicsDevice* Graphics;
     FDXDShaderManager* ShaderManager;
 
-    TArray<UStaticMeshComponent*> StaticMeshComponents;
+    TArray<USkeletalMeshComponent*> SkeletalMeshComponents;
 };
-

@@ -10,3 +10,8 @@ void USkeletalMesh::SetData(FSkeletalMeshRenderData* InRenderData)
 
 
 }
+
+const FSkeletalMeshRenderData* USkeletalMesh::GetRenderData() const
+{
+    return RenderData.get(); 
+}

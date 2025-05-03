@@ -15,6 +15,7 @@
 #include "D3D11RHI/DXDBufferManager.h"
 
 
+class FSkeletalMeshRenderPass;
 class FLightHeatMapRenderPass;
 class FPostProcessCompositingPass;
 enum class EResourceType : uint8;
@@ -97,6 +98,7 @@ public:
     class FShadowRenderPass* ShadowRenderPass;
 
     FStaticMeshRenderPass* StaticMeshRenderPass = nullptr;
+    FSkeletalMeshRenderPass* SkeletalMeshRenderPass = nullptr;
     FWorldBillboardRenderPass* WorldBillboardRenderPass = nullptr;
     FEditorBillboardRenderPass* EditorBillboardRenderPass = nullptr;
     FGizmoRenderPass* GizmoRenderPass = nullptr;

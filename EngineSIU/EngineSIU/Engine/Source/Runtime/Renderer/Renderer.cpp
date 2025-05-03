@@ -27,6 +27,7 @@
 #include "PostProcessCompositingPass.h"
 #include "ShadowManager.h"
 #include "ShadowRenderPass.h"
+#include "SkeletalMeshRenderPass.h"
 #include "SlateRenderPass.h"
 #include "UnrealClient.h"
 #include "GameFrameWork/Actor.h"
@@ -52,6 +53,7 @@ void FRenderer::Initialize(FGraphicsDevice* InGraphics, FDXDBufferManager* InBuf
     CreateCommonShader();
     
     StaticMeshRenderPass = new FStaticMeshRenderPass();
+    SkeletalMeshRenderPass = new FSkeletalMeshRenderPass();
     WorldBillboardRenderPass = new FWorldBillboardRenderPass();
     EditorBillboardRenderPass = new FEditorBillboardRenderPass();
     GizmoRenderPass = new FGizmoRenderPass();
@@ -78,6 +80,7 @@ void FRenderer::Initialize(FGraphicsDevice* InGraphics, FDXDBufferManager* InBuf
     
     StaticMeshRenderPass->Initialize(BufferManager, Graphics, ShaderManager);
     StaticMeshRenderPass->InitializeShadowManager(ShadowManager);
+    SkeletalMeshRenderPass->Initialize(BufferManager, Graphics, ShaderManager);
     WorldBillboardRenderPass->Initialize(BufferManager, Graphics, ShaderManager);
     EditorBillboardRenderPass->Initialize(BufferManager, Graphics, ShaderManager);
     GizmoRenderPass->Initialize(BufferManager, Graphics, ShaderManager);
@@ -104,6 +107,7 @@ void FRenderer::Release()
     delete ShadowRenderPass;
 
     delete StaticMeshRenderPass;
+    delete SkeletalMeshRenderPass;
     delete WorldBillboardRenderPass;
     delete EditorBillboardRenderPass;
     delete GizmoRenderPass;
@@ -200,6 +204,22 @@ void FRenderer::CreateCommonShader() const
     {
         return;
     }
+
+    D3D11_INPUT_ELEMENT_DESC SkeletalMeshLayoutDesc[] = {
+        {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"TANGENT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"BONE_INDICES", 0, DXGI_FORMAT_R32G32B32A32_UINT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        {"BONE_WEIGHTS", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+    };
+
+    hr = ShaderManager->AddVertexShaderAndInputLayout(L"SkeletalMeshVertexShader", L"Shaders/SkeletalMeshVertexShader.hlsl", "mainVS", SkeletalMeshLayoutDesc, ARRAYSIZE(SkeletalMeshLayoutDesc));
+    if (FAILED(hr))
+    {
+        return;
+    }
     
 #pragma region UberShader
     D3D_SHADER_MACRO DefinesGouraud[] =
@@ -229,6 +249,7 @@ void FRenderer::PrepareRender(FViewportResource* ViewportResource) const
 void FRenderer::PrepareRenderPass() const
 {
     StaticMeshRenderPass->PrepareRenderArr();
+    SkeletalMeshRenderPass->PrepareRenderArr();
     ShadowRenderPass->PrepareRenderArr();
     GizmoRenderPass->PrepareRenderArr();
     WorldBillboardRenderPass->PrepareRenderArr();
@@ -243,6 +264,7 @@ void FRenderer::PrepareRenderPass() const
 void FRenderer::ClearRenderArr() const
 {
     StaticMeshRenderPass->ClearRenderArr();
+    SkeletalMeshRenderPass->ClearRenderArr();
     ShadowRenderPass->ClearRenderArr();
     WorldBillboardRenderPass->ClearRenderArr();
     EditorBillboardRenderPass->ClearRenderArr();
@@ -379,6 +401,15 @@ void FRenderer::RenderWorldScene(const std::shared_ptr<FEditorViewportClient>& V
             QUICK_SCOPE_CYCLE_COUNTER(StaticMeshPass_CPU)
             QUICK_GPU_SCOPE_CYCLE_COUNTER(StaticMeshPass_GPU, *GPUTimingManager)
             StaticMeshRenderPass->Render(Viewport);
+        }
+    }
+
+    if (ShowFlag & EEngineShowFlags::SF_SkeletalMesh)
+    {
+        {
+            // QUICK_SCOPE_CYCLE_COUNTER(SkeletalMeshPass_CPU)
+            // QUICK_GPU_SCOPE_CYCLE_COUNTER(SkeletalMeshPass_GPU, *GPUTimingManager)
+            SkeletalMeshRenderPass->Render(Viewport);
         }
     }
     

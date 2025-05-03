@@ -95,6 +95,27 @@ struct PS_INPUT_StaticMesh
     nointerpolation uint MaterialIndex : MATERIAL_INDEX;
 };
 
+struct VS_INPUT_SkeletalMesh
+{
+    float3 Position : POSITION;
+    float4 Color : COLOR;
+    float3 Normal : NORMAL;
+    float4 Tangent : TANGENT;
+    float2 UV : TEXCOORD;
+    uint4 BoneIndices : BONE_INDICES;
+    float4 BoneWeights : BONE_WEIGHTS;
+};
+
+struct PS_INPUT_SkeletalMesh
+{
+    float4 Position : SV_POSITION;
+    float4 Color : COLOR;
+    float2 UV : TEXCOORD0;
+    float3 WorldNormal : TEXCOORD1;
+    float4 WorldTangent : TEXCOORD2;
+    float3 WorldPosition : TEXCOORD3;
+};
+
 ////////
 /// 공용: 11 ~ 13
 ///////
