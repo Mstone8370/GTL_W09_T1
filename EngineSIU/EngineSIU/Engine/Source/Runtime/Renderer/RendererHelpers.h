@@ -20,7 +20,7 @@ enum class EShaderSRVSlot : int8
 
 namespace MaterialUtils
 {
-    inline void UpdateMaterial(FDXDBufferManager* BufferManager, FGraphicsDevice* Graphics, const FObjMaterialInfo& MaterialInfo)
+    inline void UpdateMaterial(FDXDBufferManager* BufferManager, FGraphicsDevice* Graphics, const FMaterialInfo& MaterialInfo)
     {
         FMaterialConstants Data;
         

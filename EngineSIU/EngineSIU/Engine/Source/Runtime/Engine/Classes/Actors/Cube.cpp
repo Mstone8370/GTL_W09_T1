@@ -5,13 +5,13 @@
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 
-#include "Engine/FObjLoader.h"
+#include "Engine/AssetManager.h"
 
 #include "GameFramework/Actor.h"
 
 ACube::ACube()
 {
-    StaticMeshComponent->SetStaticMesh(FObjManager::GetStaticMesh(L"Contents/Reference/Reference.obj"));
+    StaticMeshComponent->SetStaticMesh(UAssetManager::Get().GetStaticMesh(L"Contents/Reference/Reference.obj"));
 
     
 }

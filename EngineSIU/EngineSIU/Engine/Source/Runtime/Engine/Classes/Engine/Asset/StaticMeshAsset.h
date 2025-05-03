@@ -22,7 +22,7 @@ struct FStaticMeshRenderData
     TArray<FStaticMeshVertex> Vertices;
     TArray<UINT> Indices;
 
-    TArray<FObjMaterialInfo> Materials;
+    TArray<FMaterialInfo> Materials;
     TArray<FMaterialSubset> MaterialSubsets;
 
     FVector BoundingBoxMin;

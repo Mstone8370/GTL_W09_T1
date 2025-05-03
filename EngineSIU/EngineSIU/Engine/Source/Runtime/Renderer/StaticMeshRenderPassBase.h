@@ -8,7 +8,7 @@ class UMaterial;
 
 struct FMatrix;
 struct FVector4;
-struct FStaticMaterial;
+struct FMeshMaterial;
 struct FStaticMeshRenderData;
 struct ID3D11Buffer;
 
@@ -39,7 +39,7 @@ protected:
 
     void RenderAllStaticMeshes(const std::shared_ptr<FEditorViewportClient>& Viewport);
 
-    void RenderPrimitive(FStaticMeshRenderData* RenderData, TArray<FStaticMaterial*> Materials, TArray<UMaterial*> OverrideMaterials, int32 SelectedSubMeshIndex) const;
+    void RenderPrimitive(FStaticMeshRenderData* RenderData, TArray<FMeshMaterial*> Materials, TArray<UMaterial*> OverrideMaterials, int32 SelectedSubMeshIndex) const;
 
     void RenderPrimitive(ID3D11Buffer* Buffer, UINT VerticesNum) const;
 

@@ -6,7 +6,6 @@
 #include "Container/Array.h"
 #include "World/WorldContext.h"
 
-class UAssetManager;
 class UWorld;
 
 class UEngine : public UObject
@@ -18,7 +17,6 @@ public:
 
 public:
     UWorld* ActiveWorld;
-    UAssetManager* AssetManager = nullptr;
 
 protected:
     TArray<FWorldContext*> WorldList;

@@ -1,5 +1,6 @@
 #include "CubeComp.h"
 #include "Engine/FObjLoader.h"
+#include "Engine/AssetManager.h"
 #include "UObject/ObjectFactory.h"
 
 
@@ -19,8 +20,7 @@ void UCubeComp::InitializeComponent()
     //SetStaticMesh(FManagerGetStaticMesh(L"helloBlender.obj"));
     // 
     // Begin Test
-    FObjManager::CreateStaticMesh("Contents/Reference/Reference.obj");
-    SetStaticMesh(FObjManager::GetStaticMesh(L"Reference.obj"));
+    StaticMesh = FObjManager::CreateStaticMesh("Contents/Reference/Reference.obj");
     // End Test
 }
 

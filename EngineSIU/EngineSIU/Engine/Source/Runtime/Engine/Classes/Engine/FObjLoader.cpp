@@ -5,6 +5,7 @@
 #include "Engine/StaticMesh.h"
 
 #include "Asset/StaticMeshAsset.h"
+#include "AssetManager.h"
 
 #include <fstream>
 #include <sstream>
@@ -245,7 +246,7 @@ bool FObjLoader::ParseMaterial(FObjInfo& OutObjInfo, FStaticMeshRenderData& OutF
             LineStream >> Line;
             MaterialIndex++;
 
-            FObjMaterialInfo Material;
+            FMaterialInfo Material;
             Material.MaterialName = Line;
             
             constexpr uint32 TexturesNum = static_cast<uint32>(EMaterialTextureSlots::MTS_MAX);
@@ -738,7 +739,7 @@ bool FObjManager::SaveStaticMeshToBinary(const FWString& FilePath, const FStatic
     // Materials
     uint32 MaterialCount = StaticMesh.Materials.Num();
     File.write(reinterpret_cast<const char*>(&MaterialCount), sizeof(MaterialCount));
-    for (const FObjMaterialInfo& Material : StaticMesh.Materials)
+    for (const FMaterialInfo& Material : StaticMesh.Materials)
     {
         Serializer::WriteFString(File, Material.MaterialName);
         
@@ -822,7 +823,7 @@ bool FObjManager::LoadStaticMeshFromBinary(const FWString& FilePath, FStaticMesh
     uint32 MaterialCount = 0;
     File.read(reinterpret_cast<char*>(&MaterialCount), sizeof(MaterialCount));
     OutStaticMesh.Materials.SetNum(MaterialCount);
-    for (FObjMaterialInfo& Material : OutStaticMesh.Materials)
+    for (FMaterialInfo& Material : OutStaticMesh.Materials)
     {
         Serializer::ReadFString(File, Material.MaterialName);
         File.read(reinterpret_cast<char*>(&Material.TextureFlag), sizeof(Material.TextureFlag));
@@ -887,7 +888,7 @@ bool FObjManager::LoadStaticMeshFromBinary(const FWString& FilePath, FStaticMesh
     return true;
 }
 
-UMaterial* FObjManager::CreateMaterial(FObjMaterialInfo materialInfo)
+UMaterial* FObjManager::CreateMaterial(FMaterialInfo materialInfo)
 {
     if (MaterialMap[materialInfo.MaterialName] != nullptr)
         return MaterialMap[materialInfo.MaterialName];
@@ -909,20 +910,17 @@ UStaticMesh* FObjManager::CreateStaticMesh(const FString& filePath)
 
     if (StaticMeshRenderData == nullptr) return nullptr;
 
-    UStaticMesh* StaticMesh = GetStaticMesh(StaticMeshRenderData->ObjectName);
+    UAssetManager* AssetManager = &UAssetManager::Get();
+
+    UStaticMesh* StaticMesh = AssetManager->GetStaticMesh(StaticMeshRenderData->ObjectName);
     if (StaticMesh != nullptr)
     {
         return StaticMesh;
     }
 
-    StaticMesh = FObjectFactory::ConstructObject<UStaticMesh>(nullptr); // TODO: 추후 AssetManager를 생성해서 관리.
+    StaticMesh = FObjectFactory::ConstructObject<UStaticMesh>(nullptr);
     StaticMesh->SetData(StaticMeshRenderData);
 
-    StaticMeshMap.Add(StaticMeshRenderData->ObjectName, StaticMesh); // TODO: 장기적으로 보면 파일 이름 대신 경로를 Key로 사용하는게 좋음.
+    AssetManager->StaticMeshAssetMap.Add(StaticMeshRenderData->ObjectName, StaticMesh); // TODO: 장기적으로 보면 파일 이름 대신 경로를 Key로 사용하는게 좋음.
     return StaticMesh;
-}
-
-UStaticMesh* FObjManager::GetStaticMesh(FWString name)
-{
-    return StaticMeshMap[name];
 }

@@ -34,12 +34,8 @@ void UEditorEngine::Init()
 
     EditorPlayer = FObjectFactory::ConstructObject<AEditorPlayer>(this);
 
-    if (AssetManager == nullptr)
-    {
-        AssetManager = FObjectFactory::ConstructObject<UAssetManager>(this);
-        assert(AssetManager);
-        AssetManager->InitAssetManager();
-    }
+    UAssetManager::Get().InitAssetManager();
+
     LoadLevel("Saved/AutoSaves.scene");
 }
 

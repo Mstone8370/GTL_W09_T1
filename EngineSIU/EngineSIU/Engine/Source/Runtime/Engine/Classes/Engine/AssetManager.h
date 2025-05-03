@@ -2,6 +2,8 @@
 #include "UObject/Object.h"
 #include "UObject/ObjectMacros.h"
 
+#include "Container/Map.h"
+
 enum class EAssetType : uint8
 {
     StaticMesh,
@@ -9,6 +11,12 @@ enum class EAssetType : uint8
     Texture2D,
     Material,
 };
+
+class UStaticMesh;
+class USkeletalMesh;
+class UMaterial;
+struct FStaticMeshRenderData;
+struct FSkeletalMeshRenderData;
 
 struct FAssetInfo
 {
@@ -45,6 +53,14 @@ public:
 
     const TMap<FName, FAssetInfo>& GetAssetRegistry();
 
+    USkeletalMesh* GetSkeletalMesh(FWString name);
+    UStaticMesh* GetStaticMesh(FWString name);
+
+    static TMap<FWString, UStaticMesh*> StaticMeshAssetMap;
+    static TMap<FWString, USkeletalMesh*> SkeletalMeshAssetMap;
+    static TMap<FString, FStaticMeshRenderData*> StaticMeshRenderDataMap;
+    static TMap<FString, FSkeletalMeshRenderData*> SkeletalMeshRenderDataMap;
+    static TMap<FString, UMaterial*> MaterialAssetMap;
 private:
     void LoadObjFiles();
 };

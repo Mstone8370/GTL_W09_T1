@@ -3,7 +3,7 @@
 
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "Engine/FObjLoader.h"
+#include "Engine/AssetManager.h"
 
 AItemActor::AItemActor()
 {
@@ -17,7 +17,7 @@ void AItemActor::PostSpawnInitialize()
     SetRootComponent(SphereComponent);
 
     MeshComponent = AddComponent<UStaticMeshComponent>(FName("MeshComponent_0"));
-    MeshComponent->SetStaticMesh(FObjManager::GetStaticMesh(L"Contents/Coin2/Coin2.obj"));
+    MeshComponent->SetStaticMesh(UAssetManager::Get().GetStaticMesh(L"Contents/Coin2/Coin2.obj"));
     MeshComponent->SetupAttachment(RootComponent);
 }
 

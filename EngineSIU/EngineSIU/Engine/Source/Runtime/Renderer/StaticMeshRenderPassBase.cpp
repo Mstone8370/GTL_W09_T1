@@ -94,7 +94,7 @@ void FStaticMeshRenderPassBase::RenderAllStaticMeshes(const std::shared_ptr<FEdi
     }
 }
 
-void FStaticMeshRenderPassBase::RenderPrimitive(FStaticMeshRenderData* RenderData, TArray<FStaticMaterial*> Materials, TArray<UMaterial*> OverrideMaterials, int32 SelectedSubMeshIndex) const
+void FStaticMeshRenderPassBase::RenderPrimitive(FStaticMeshRenderData* RenderData, TArray<FMeshMaterial*> Materials, TArray<UMaterial*> OverrideMaterials, int32 SelectedSubMeshIndex) const
 {
     UINT Stride = sizeof(FStaticMeshVertex);
     UINT Offset = 0;

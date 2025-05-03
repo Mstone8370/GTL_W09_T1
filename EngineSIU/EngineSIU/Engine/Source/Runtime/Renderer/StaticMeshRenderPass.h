@@ -13,7 +13,7 @@ class UWorld;
 class UMaterial;
 class FEditorViewportClient;
 class UStaticMeshComponent;
-struct FStaticMaterial;
+struct FMeshMaterial;
 class FShadowRenderPass;
 
 class FStaticMeshRenderPass : public IRenderPass
@@ -42,7 +42,7 @@ public:
   
     void UpdateLitUnlitConstant(int32 isLit) const;
 
-    void RenderPrimitive(FStaticMeshRenderData* RenderData, TArray<FStaticMaterial*> Materials, TArray<UMaterial*> OverrideMaterials, int SelectedSubMeshIndex) const;
+    void RenderPrimitive(FStaticMeshRenderData* RenderData, TArray<FMeshMaterial*> Materials, TArray<UMaterial*> OverrideMaterials, int SelectedSubMeshIndex) const;
     
     void RenderPrimitive(ID3D11Buffer* pBuffer, UINT numVertices) const;
 

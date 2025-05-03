@@ -8,7 +8,6 @@
 #include "D3D11RHI/GraphicDevice.h"
 #include "D3D11RHI/DXDShaderManager.h"
 #include "Components/Light/DirectionalLightComponent.h"
-#include "Components/Light/PointLightComponent.h"
 #include "Components/Light/SpotLightComponent.h"
 #include "Engine/EditorEngine.h"
 #include "Engine/Engine.h"
@@ -19,7 +18,6 @@
 
 class UEditorEngine;
 class UStaticMeshComponent;
-#include "UnrealEd/EditorViewportClient.h"
 
 FShadowRenderPass::FShadowRenderPass()
 {
@@ -192,7 +190,7 @@ void FShadowRenderPass::SetLightData(const TArray<class UPointLightComponent*>& 
     SpotLights = InSpotLights;
 }
 
-void FShadowRenderPass::RenderPrimitive(FStaticMeshRenderData* RenderData, const TArray<FStaticMaterial*> Materials, TArray<UMaterial*> OverrideMaterials, int32 SelectedSubMeshIndex)
+void FShadowRenderPass::RenderPrimitive(FStaticMeshRenderData* RenderData, const TArray<FMeshMaterial*> Materials, TArray<UMaterial*> OverrideMaterials, int32 SelectedSubMeshIndex)
 {
     UINT Stride = sizeof(FStaticMeshVertex);
     UINT Offset = 0;

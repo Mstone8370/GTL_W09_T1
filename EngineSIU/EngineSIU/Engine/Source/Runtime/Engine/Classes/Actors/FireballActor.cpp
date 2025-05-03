@@ -1,5 +1,6 @@
 #include "FireballActor.h"
 #include "Engine/FObjLoader.h"
+#include "Engine/AssetManager.h"
 
 #include "Components/Light/PointLightComponent.h"
 
@@ -14,7 +15,7 @@ AFireballActor::AFireballActor()
 
     SphereComp = AddComponent<USphereComp>("USphereComp_0");
     
-    SphereComp->SetStaticMesh(FObjManager::GetStaticMesh(L"Contents/Sphere.obj"));
+    SphereComp->SetStaticMesh(UAssetManager::Get().GetStaticMesh(L"Contents/Sphere.obj"));
   
     PointLightComponent = AddComponent<UPointLightComponent>("UPointLightComponent_0");
     

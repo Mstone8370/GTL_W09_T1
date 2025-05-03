@@ -1,7 +1,7 @@
-﻿#include "TriggerBox.h"
+#include "TriggerBox.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/BoxComponent.h"
-#include "Engine/FObjLoader.h"
+#include "Engine/AssetManager.h"
 
 ATriggerBox::ATriggerBox()
 {
@@ -9,7 +9,7 @@ ATriggerBox::ATriggerBox()
     RootComponent = BoxComponent;
 
     MeshComponent = AddComponent<UStaticMeshComponent>(FName("MeshComponent_0"));
-    MeshComponent->SetStaticMesh(FObjManager::GetStaticMesh(L"Contents/FryBasket/FryBasket.obj"));
+    MeshComponent->SetStaticMesh(UAssetManager::Get().GetStaticMesh(L"Contents/FryBasket/FryBasket.obj"));
     MeshComponent->SetupAttachment(BoxComponent);
 }
 

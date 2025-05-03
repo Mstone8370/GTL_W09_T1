@@ -7,13 +7,13 @@
 #include "Components/SphereComponent.h"
 #include "Contents/Components/FishTailComponent.h"
 #include "Contents/Components/FishBodyComponent.h"
-#include "Engine/FObjLoader.h"
 #include "SoundManager.h"
 #include "TriggerBox.h"
 #include "Contents/Objects/DamageCameraShake.h"
 #include "GameFramework/GameMode.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "World/World.h"
+#include "Engine/AssetManager.h"
 
 AFish::AFish()
     : JumpZVelocity(50.f)
@@ -91,7 +91,7 @@ void AFish::BeginPlay()
             {
                 if (UFishBodyComponent* MeshComp = GetComponentByClass<UFishBodyComponent>())
                 {
-                    MeshComp->SetStaticMesh(FObjManager::GetStaticMesh(L"Contents/FishDish/FishDish.obj"));
+                    MeshComp->SetStaticMesh(UAssetManager::Get().GetStaticMesh(L"Contents/FishDish/FishDish.obj"));
                 }
                 
                 if (UFishTailComponent* TailComp = GetComponentByClass<UFishTailComponent>())
@@ -149,7 +149,7 @@ void AFish::Reset()
     
     if (UFishBodyComponent* MeshComp = GetComponentByClass<UFishBodyComponent>())
     {
-        MeshComp->SetStaticMesh(FObjManager::GetStaticMesh(L"Contents/Fish/Fish_Front.obj"));
+        MeshComp->SetStaticMesh(UAssetManager::Get().GetStaticMesh(L"Contents/Fish/Fish_Front.obj"));
     }
     SetActorLocation(FVector(0, 0, 0));
     SetActorRotation(FRotator(0.0f, 0.0f, 0.0f));

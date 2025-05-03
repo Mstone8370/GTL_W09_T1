@@ -4,28 +4,27 @@
 #include <filesystem>
 #include "Engine/FObjLoader.h"
 
-bool UAssetManager::IsInitialized()
-{
-    return GEngine && GEngine->AssetManager;
-}
+TMap<FWString, UStaticMesh*> UAssetManager::StaticMeshAssetMap;
+TMap<FWString, USkeletalMesh*> UAssetManager::SkeletalMeshAssetMap;
+TMap<FString, FStaticMeshRenderData*> UAssetManager::StaticMeshRenderDataMap;
+TMap<FString, FSkeletalMeshRenderData*> UAssetManager::SkeletalMeshRenderDataMap;
+TMap<FString, UMaterial*> UAssetManager::MaterialAssetMap;
 
 UAssetManager& UAssetManager::Get()
 {
-    if (UAssetManager* Singleton = GEngine->AssetManager)
-    {
-        return *Singleton;
-    }
-    else
-    {
-        UE_LOG(ELogLevel::Error, "Cannot use AssetManager if no AssetManagerClassName is defined!");
-        assert(0);
-        return *new UAssetManager; // never calls this
-    }
-}
-
-UAssetManager* UAssetManager::GetIfInitialized()
-{
-    return GEngine ? GEngine->AssetManager : nullptr;
+    //if (UAssetManager* Singleton = GEngine->AssetManager)
+    //{
+    //    return *Singleton;
+    //}
+    //else
+    //{
+    //    UE_LOG(ELogLevel::Error, "Cannot use AssetManager if no AssetManagerClassName is defined!");
+    //    assert(0);
+    //    return *new UAssetManager; // never calls this
+    //}
+    
+    static UAssetManager Singleton;
+    return Singleton;
 }
 
 void UAssetManager::InitAssetManager()
@@ -53,7 +52,7 @@ void UAssetManager::LoadObjFiles()
             FAssetInfo NewAssetInfo;
             NewAssetInfo.AssetName = FName(Entry.path().filename().string());
             NewAssetInfo.PackagePath = FName(Entry.path().parent_path().string());
-            NewAssetInfo.AssetType = EAssetType::StaticMesh; // obj 파일은 무조건 StaticMesh
+            NewAssetInfo.AssetType = EAssetType::StaticMesh; // obj 파일은 무조 건 StaticMesh
             NewAssetInfo.Size = static_cast<uint32>(std::filesystem::file_size(Entry.path()));
             
             AssetRegistry->PathNameToAssetInfo.Add(NewAssetInfo.AssetName, NewAssetInfo);
@@ -64,4 +63,14 @@ void UAssetManager::LoadObjFiles()
             // FObjManager::LoadObjStaticMeshAsset(UGTLStringLibrary::StringToWString(Entry.path().string()));
         }
     }
+}
+
+USkeletalMesh* UAssetManager::GetSkeletalMesh(FWString name)
+{
+    return SkeletalMeshAssetMap[name];
+}
+
+UStaticMesh* UAssetManager::GetStaticMesh(FWString name)
+{
+    return StaticMeshAssetMap[name];
 }

@@ -11,7 +11,6 @@
 #include "UnrealEd/UnrealEd.h"
 #include "World/World.h"
 
-#include "Engine/EditorEngine.h"
 #include "Renderer/DepthPrePass.h"
 #include "Renderer/TileLightCullingPass.h"
 

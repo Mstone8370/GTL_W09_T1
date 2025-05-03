@@ -96,7 +96,7 @@ private:
     int SelectedMaterialIndex = -1;
     int CurMaterialIndex = -1;
     UStaticMeshComponent* SelectedStaticMeshComp = nullptr;
-    FObjMaterialInfo tempMaterialInfo;
+    FMaterialInfo tempMaterialInfo;
     bool IsCreateMaterial;
 
     const FString TemplateFilePath = FString("LuaScripts/template.lua");

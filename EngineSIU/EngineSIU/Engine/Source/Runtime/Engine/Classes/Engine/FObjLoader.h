@@ -41,7 +41,7 @@ public:
 
     static bool LoadStaticMeshFromBinary(const FWString& FilePath, FStaticMeshRenderData& OutStaticMesh);
 
-    static UMaterial* CreateMaterial(FObjMaterialInfo materialInfo);
+    static UMaterial* CreateMaterial(FMaterialInfo materialInfo);
 
     static TMap<FString, UMaterial*>& GetMaterials() { return MaterialMap; }
 
@@ -52,8 +52,6 @@ public:
     static UStaticMesh* CreateStaticMesh(const FString& filePath);
 
     static const TMap<FWString, UStaticMesh*>& GetStaticMeshes() { return StaticMeshMap; }
-
-    static UStaticMesh* GetStaticMesh(FWString name);
 
     static int GetStaticMeshNum() { return StaticMeshMap.Num(); }
 

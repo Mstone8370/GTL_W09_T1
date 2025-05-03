@@ -15,7 +15,6 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
 #include "D3D11RHI/GraphicDevice.h"
-#include "Engine/FObjLoader.h"
 #include "Engine/Classes/Actors/Player.h"
 #include "Engine/Classes/Components/Light/LightComponent.h"
 #include "Engine/Classes/Components/Light/DirectionalLightComponent.h"
@@ -23,6 +22,7 @@
 #include "Engine/Classes/Components/Light/PointLightComponent.h"
 #include "Engine/Classes/Components/HeightFogComponent.h"
 #include "PropertyEditor/ShowFlags.h"
+#include "Engine/AssetManager.h"
 
 void FEditorRenderPass::Initialize(FDXDBufferManager* InBufferManager, FGraphicsDevice* InGraphics, FDXDShaderManager* InShaderManager)
 {
@@ -349,7 +349,7 @@ void FEditorRenderPass::LazyLoad()
     Resources.IconTextures[IconType::AtmosphericFog] = FEngineLoop::ResourceManager.GetTexture(L"Assets/Editor/Icon/AtmosphericFog_64.png");
 
     // Gizmo arrow 로드
-    FStaticMeshRenderData* RenderData = FObjManager::GetStaticMesh(L"Assets/GizmoTranslationZ.obj")->GetRenderData();
+    FStaticMeshRenderData* RenderData = UAssetManager::Get().GetStaticMesh(L"Assets/GizmoTranslationZ.obj")->GetRenderData();
 
     FVertexInfo VertexInfo;
     BufferManager->CreateVertexBuffer(RenderData->ObjectName, RenderData->Vertices, VertexInfo);
