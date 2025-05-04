@@ -40,7 +40,7 @@ void UEditorEngine::Init()
 
     //LoadLevel("Saved/AutoSaves.scene");
 
-    FFbxManager::CreateMesh("XBotTriangle.fbx");
+    FFbxManager::CreateMesh("X Bot.fbx");
 }
 
 void UEditorEngine::Release()

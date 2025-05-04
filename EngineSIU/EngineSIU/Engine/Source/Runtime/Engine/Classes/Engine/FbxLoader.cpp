@@ -7,7 +7,7 @@
 #include "Asset/SkeletalMeshAsset.h"
 #include "Asset/StaticMeshAsset.h"
 #include "AssetManager.h"
-
+#include <fbxsdk/utils/fbxgeometryconverter.h>
 
 FFbxLoader::FFbxLoader()
     : Manager(nullptr)
@@ -50,6 +50,10 @@ bool FFbxLoader::LoadFBX(const FString& InFilePath)
     {
         bRet = Importer->Import(Scene);
     }
+
+    FbxGeometryConverter converter(Manager);
+    // 씬 전체를 삼각형화 (원본 메시를 삼각형으로 대체)
+    converter.Triangulate(Scene, /*replace=*/true);
 
     return bRet;
 }
