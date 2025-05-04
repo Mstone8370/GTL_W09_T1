@@ -466,9 +466,13 @@ void FFbxManager::ConvertRawToSkeletalMeshRenderData(const FFbxInfo& Raw, FSkele
     Cooked.ObjectName = Raw.ObjectName;
     Cooked.DisplayName = Raw.DisplayName;
 
-    // 1. 정점/인덱스 복사 및 풀기(Flatten)
+    UINT VertexBase = 0;
+    UINT IndexBase = 0;
+
+    int MaterialIndex = 0;
     for (const FFbxMesh& Mesh : Raw.Meshes)
     {
+        // 1. 정점 추가
         for (const FFbxVertex& Vtx : Mesh.Vertices)
         {
             FSkeletalMeshVertex NewVtx;
@@ -486,10 +490,22 @@ void FFbxManager::ConvertRawToSkeletalMeshRenderData(const FFbxInfo& Raw, FSkele
             NewVtx.A = 1.0f; // 필요시 Vtx.Color.W
             Cooked.Vertices.Add(NewVtx);
         }
-        for (uint32 idx : Mesh.Indices)
-            Cooked.Indices.Add(idx);
+
+        // 2. 인덱스 추가 (정점 오프셋 적용)
+        for (UINT idx : Mesh.Indices)
+            Cooked.Indices.Add(idx + VertexBase);
+
+        // 3. MaterialSubset(Section) 추가 (인덱스 오프셋 적용)
         for (const FMaterialSubset& Subset : Mesh.MaterialSubsets)
-            Cooked.MaterialSubsets.Add(Subset);
+        {
+            FMaterialSubset NewSubset = Subset;
+            NewSubset.IndexStart += IndexBase;
+            NewSubset.MaterialIndex = MaterialIndex++;
+            Cooked.MaterialSubsets.Add(NewSubset);
+        }
+
+        VertexBase += Mesh.Vertices.Num();
+        IndexBase += Mesh.Indices.Num();
     }
 
     // 2. 본 정보 복사
