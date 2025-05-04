@@ -22,6 +22,7 @@ public:
     void ParseBone(FbxNode* Node, FFbxInfo& OutFbxInfo);
     void ParseMaterial(FbxNode* Node, FFbxInfo& OutFbxInfo);
     FMatrix ConvertFbxMatrixToFMatrix(const FbxAMatrix& fbxMat);
+    bool CreateTextureFromFile(const FWString& Filename, bool bIsSRGB = true);
     FbxScene* GetScene() const { return Scene; }
 private:
     FbxManager* Manager;

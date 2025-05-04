@@ -126,73 +126,65 @@ void FFbxLoader::ParseMesh(FbxNode* Node, FFbxInfo& OutFbxInfo)
     FFbxMesh OutMesh;
     OutMesh.Name = Node->GetName();
 
-    // 정점 (Position)
-    int VertexCount = Mesh->GetControlPointsCount();
-    for (int i = 0; i < VertexCount; ++i)
-    {
-        FbxVector4 p = Mesh->GetControlPointAt(i);
-        FFbxVertex v;
-        v.Position = FVector((float)p[0], (float)p[1], (float)p[2]);
-        OutMesh.Vertices.Add(v);
-    }
+    std::unordered_map<std::string, int> VertexMap;
+    TArray<FFbxVertex> Vertices;
+    TArray<uint32> Indices;
 
-    // 인덱스 (페이스)
     int PolyCount = Mesh->GetPolygonCount();
+    int PolyIndex = 0;
     for (int i = 0; i < PolyCount; ++i)
     {
         int PolySize = Mesh->GetPolygonSize(i);
         for (int j = 0; j < PolySize; ++j)
         {
-            int idx = Mesh->GetPolygonVertex(i, j);
-            OutMesh.Indices.Add(idx);
-        }
-    }
+            int ctrlPtIdx = Mesh->GetPolygonVertex(i, j);
+            FbxVector4 p = Mesh->GetControlPointAt(ctrlPtIdx);
+            FVector Position = FVector((float)p[0], (float)p[1], (float)p[2]);
 
-    // 노멀, UV, 컬러 등 (매핑 모드에 따라 파싱)
-    // 예시: 첫 번째 UV 채널
-    if (Mesh->GetElementUVCount() > 0)
-    {
-        const FbxGeometryElementUV* UVs = Mesh->GetElementUV(0);
-        if (UVs->GetMappingMode() == FbxGeometryElement::eByPolygonVertex)
-        {
-            int PolyIndex = 0;
-            for (int i = 0; i < PolyCount; ++i)
-            {
-                int PolySize = Mesh->GetPolygonSize(i);
-                for (int j = 0; j < PolySize; ++j)
-                {
-                    int ctrlPtIdx = Mesh->GetPolygonVertex(i, j);
+            // UV 추출
+            FVector2D UV(0, 0);
+            if (Mesh->GetElementUVCount() > 0) {
+                const FbxGeometryElementUV* UVs = Mesh->GetElementUV(0);
+                if (UVs->GetMappingMode() == FbxGeometryElement::eByPolygonVertex) {
                     FbxVector2 uv;
                     bool unmapped;
                     Mesh->GetPolygonVertexUV(i, j, UVs->GetName(), uv, unmapped);
-                    OutMesh.Vertices[ctrlPtIdx].UV = FVector2D((float)uv[0], (float)uv[1]);
-                    ++PolyIndex;
+                    UV = FVector2D((float)uv[0], 1.0 - (float)uv[1]);
                 }
             }
-        }
-        // (다른 매핑 모드도 필요시 구현)
-    }
 
-    // 노멀 파싱 (eByPolygonVertex 예시)
-    if (Mesh->GetElementNormalCount() > 0)
-    {
-        const FbxGeometryElementNormal* Normals = Mesh->GetElementNormal(0);
-        if (Normals->GetMappingMode() == FbxGeometryElement::eByPolygonVertex)
-        {
-            int PolyIndex = 0;
-            for (int i = 0; i < PolyCount; ++i)
-            {
-                int PolySize = Mesh->GetPolygonSize(i);
-                for (int j = 0; j < PolySize; ++j)
-                {
-                    int ctrlPtIdx = Mesh->GetPolygonVertex(i, j);
+            // 노멀 추출
+            FVector Normal(0, 0, 1);
+            if (Mesh->GetElementNormalCount() > 0) {
+                const FbxGeometryElementNormal* Normals = Mesh->GetElementNormal(0);
+                if (Normals->GetMappingMode() == FbxGeometryElement::eByPolygonVertex) {
                     FbxVector4 n = Normals->GetDirectArray().GetAt(PolyIndex);
-                    OutMesh.Vertices[ctrlPtIdx].Normal = FVector((float)n[0], (float)n[1], (float)n[2]);
-                    ++PolyIndex;
+                    Normal = FVector((float)n[0], (float)n[1], (float)n[2]);
                 }
             }
+
+            // string 키 생성 (위치 인덱스/노멀/UV)
+            std::string Key = std::to_string(ctrlPtIdx) + "/" +
+                std::to_string(Normal.X) + "," + std::to_string(Normal.Y) + "," + std::to_string(Normal.Z) + "/" +
+                std::to_string(UV.X) + "," + std::to_string(UV.Y);
+
+            int VertIdx;
+            auto it = VertexMap.find(Key);
+            if (it != VertexMap.end()) {
+                VertIdx = it->second;
+            }
+            else {
+                FFbxVertex v;
+                v.Position = Position;
+                v.Normal = Normal;
+                v.UV = UV;
+                VertIdx = Vertices.Num();
+                Vertices.Add(v);
+                VertexMap[Key] = VertIdx;
+            }
+            Indices.Add(VertIdx);
+            ++PolyIndex;
         }
-        // (다른 매핑 모드도 필요시 구현)
     }
 
     // 머티리얼 Subset (Section) 파싱
@@ -256,6 +248,8 @@ void FFbxLoader::ParseMesh(FbxNode* Node, FFbxInfo& OutFbxInfo)
         // (필요시 다른 매핑 모드도 처리)
     }
 
+    OutMesh.Vertices = Vertices;
+    OutMesh.Indices = Indices;
     OutFbxInfo.Meshes.Add(OutMesh);
 }
 
@@ -310,8 +304,12 @@ void FFbxLoader::ParseMaterial(FbxNode* Node, FFbxInfo& OutFbxInfo)
             FbxFileTexture* Tex = DiffuseProp.GetSrcObject<FbxFileTexture>(t);
             FTextureInfo TexInfo;
             TexInfo.TextureName = Tex->GetName();
-            TexInfo.TexturePath = FString(Tex->GetFileName()).ToWideString();
-            TexInfo.bIsSRGB = true; // Diffuse는 보통 sRGB
+            TexInfo.TexturePath = FString(Tex->GetRelativeFileName()).ToWideString();
+            if (CreateTextureFromFile(TexInfo.TexturePath))
+            {
+                TexInfo.bIsSRGB = true;
+                MatInfo.TextureFlag |= static_cast<uint16>(EMaterialTextureFlags::MTF_Diffuse);
+            }
             MatInfo.TextureInfos.Add(TexInfo);
         }
 
@@ -330,6 +328,22 @@ FMatrix FFbxLoader::ConvertFbxMatrixToFMatrix(const FbxAMatrix& fbxMat)
     return result;
 }
 
+bool FFbxLoader::CreateTextureFromFile(const FWString& Filename, bool bIsSRGB)
+{
+    if (FEngineLoop::ResourceManager.GetTexture(Filename))
+    {
+        return true;
+    }
+
+    HRESULT hr = FEngineLoop::ResourceManager.LoadTextureFromFile(FEngineLoop::GraphicDevice.Device, Filename.c_str(), bIsSRGB);
+
+    if (FAILED(hr))
+    {
+        return false;
+    }
+
+    return true;
+}
 
 FFbxLoader FFbxManager::FbxLoader;
 
