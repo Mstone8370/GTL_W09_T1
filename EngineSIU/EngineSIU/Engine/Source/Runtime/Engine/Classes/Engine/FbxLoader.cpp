@@ -212,6 +212,8 @@ bool FFbxLoader::LoadFBX(const FString& InFilePath, FSkeletalMeshRenderData& Out
     {
         return false;
     }
+    
+    FBXConvertScene();
 
     // Basic Setup
     OutRenderData.ObjectName = InFilePath.ToWideString();
@@ -231,13 +233,14 @@ bool FFbxLoader::LoadFBX(const FString& InFilePath, FSkeletalMeshRenderData& Out
     
     // DesiredAxisSystem.ConvertScene(Scene); // 언리얼 엔진 방식 좌표축
     //FbxAxisSystem::Max.ConvertScene(Scene); // 언리얼 엔진 방식 좌표축
+    
     */
 
     const FbxGlobalSettings& GlobalSettings = Scene->GetGlobalSettings();
     FbxSystemUnit SystemUnit = GlobalSettings.GetSystemUnit();
     const double ScaleFactor = SystemUnit.GetScaleFactor();
     OutputDebugStringA(std::format("### FBX ###\nScene Scale: {} cm\n", ScaleFactor).c_str());
-    
+
     if (FbxNode* RootNode = Scene->GetRootNode())
     {
         FbxGeometryConverter Converter(Manager);
@@ -441,6 +444,58 @@ void FFbxLoader::ProcessMesh(FbxNode* Node, FSkeletalMeshRenderData& OutRenderDa
             VertexCounter++; // 다음 폴리곤 정점으로 이동
         } // End for each vertex in polygon
     } // End for each polygon
+}
+
+bool FFbxLoader::FBXConvertScene()
+{
+    if (!Scene || !Manager)
+    {
+        OutputDebugStringA("Error: Scene or Manager is not initialized.\n");
+        return false;
+    }
+
+    // 엔진의 목표 좌표계 정의 (Unreal Engine 기준)
+    //    - Up: Z 축 (eZAxis)
+    //    - Forward Axis Determination: Requires Parity based on Up & Handedness to achieve X-Forward.
+    //    - Handedness: 왼손 좌표계 (eLeftHanded)
+    FbxAxisSystem::EUpVector UpVector = (FbxAxisSystem::EUpVector)-FbxAxisSystem::eZAxis;
+    FbxAxisSystem::EFrontVector FrontVector = (FbxAxisSystem::EFrontVector)-FbxAxisSystem::eParityEven; 
+    FbxAxisSystem::ECoordSystem CoordSystem = FbxAxisSystem::eLeftHanded;
+    FbxAxisSystem EngineAxisSystem(UpVector, FrontVector, CoordSystem);
+
+    // FBX 파일의 원본 좌표계 가져오기
+    FbxAxisSystem SourceAxisSystem = Scene->GetGlobalSettings().GetAxisSystem();
+
+    FbxAMatrix& matrix = Scene->GetRootNode()->EvaluateGlobalTransform();
+
+    //좌표계가 다른 경우에만 변환 수행
+    if (SourceAxisSystem != EngineAxisSystem)
+    {
+        OutputDebugStringA("Info: Source coordinate system differs from engine. Converting scene...\n");
+
+        //FbxRootNodeUtility::RemoveAllFbxRoots(Scene);
+
+        FbxAxisSystem AxisSystem = Scene->GetGlobalSettings().GetAxisSystem();
+
+        // FBX SDK를 사용하여 씬 전체의 좌표계를 변환합니다.
+        // 이 함수는 노드 변환, 애니메이션 커브 등을 재귀적으로 수정합니다.
+        EngineAxisSystem.ConvertScene(Scene);
+  
+    }
+    else
+    {
+        OutputDebugStringA("Info: Source coordinate system already matches engine. No conversion needed.\n");
+    }
+
+    FbxAMatrix& aftermatrix = Scene->GetRootNode()->EvaluateGlobalTransform();
+
+
+    // 애니메이션 평가기 리셋 (좌표계 변환 후 필요)
+    // 변환으로 인해 노드/커브 데이터가 변경되었을 수 있으므로 평가기를 리셋합니다.
+    Scene->GetAnimationEvaluator()->Reset();
+
+    
+    return true; 
 }
 
 std::unique_ptr<FSkeletalMeshRenderData> FFbxManager::LoadFbxSkeletalMeshAsset(const FWString& FilePath)

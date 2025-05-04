@@ -23,6 +23,7 @@ private:
 
     void TraverseNodeRecursive(FbxNode* Node, FSkeletalMeshRenderData& OutRenderData);
     void ProcessMesh(FbxNode* Node, FSkeletalMeshRenderData& OutRenderData);
+    bool FBXConvertScene();
 };
 
 class FFbxManager
