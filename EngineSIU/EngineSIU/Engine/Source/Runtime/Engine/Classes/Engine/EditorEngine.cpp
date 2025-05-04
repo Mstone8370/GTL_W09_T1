@@ -40,12 +40,7 @@ void UEditorEngine::Init()
 
     //LoadLevel("Saved/AutoSaves.scene");
 
-    FFbxManager::CreateMesh("X Bot.fbx");
     FFbxManager::CreateMesh("XBotTriangle.fbx");
-    FFbxManager::CreateMesh("RedBox.fbx");
-    FFbxManager::CreateMesh("SK_Mannequin.FBX");
-    FFbxManager::CreateMesh("Slime.FBX");
-    FFbxManager::CreateMesh("Piggy_Bank.FBX");
 }
 
 void UEditorEngine::Release()
