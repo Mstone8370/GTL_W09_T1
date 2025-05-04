@@ -890,18 +890,14 @@ bool FObjManager::LoadStaticMeshFromBinary(const FWString& FilePath, FStaticMesh
 
 UMaterial* FObjManager::CreateMaterial(FMaterialInfo materialInfo)
 {
-    if (MaterialMap[materialInfo.MaterialName] != nullptr)
-        return MaterialMap[materialInfo.MaterialName];
+    UAssetManager* AssetManager = &UAssetManager::Get();
+    if (AssetManager->GetMaterial(materialInfo.MaterialName) != nullptr)
+        return AssetManager->GetMaterial(materialInfo.MaterialName);
 
     UMaterial* newMaterial = FObjectFactory::ConstructObject<UMaterial>(nullptr); // Material은 Outer가 없이 따로 관리되는 객체이므로 Outer가 없음으로 설정. 추후 Garbage Collection이 추가되면 AssetManager를 생성해서 관리.
     newMaterial->SetMaterialInfo(materialInfo);
-    MaterialMap.Add(materialInfo.MaterialName, newMaterial);
+    AssetManager->GetMaterials().Add(materialInfo.MaterialName, newMaterial);
     return newMaterial;
-}
-
-UMaterial* FObjManager::GetMaterial(FString name)
-{
-    return MaterialMap[name];
 }
 
 UStaticMesh* FObjManager::CreateStaticMesh(const FString& filePath)
@@ -912,7 +908,7 @@ UStaticMesh* FObjManager::CreateStaticMesh(const FString& filePath)
 
     UAssetManager* AssetManager = &UAssetManager::Get();
 
-    UStaticMesh* StaticMesh = AssetManager->GetStaticMesh(StaticMeshRenderData->ObjectName);
+    UStaticMesh* StaticMesh = AssetManager->GetStaticMeshAsset(StaticMeshRenderData->ObjectName);
     if (StaticMesh != nullptr)
     {
         return StaticMesh;
@@ -921,6 +917,6 @@ UStaticMesh* FObjManager::CreateStaticMesh(const FString& filePath)
     StaticMesh = FObjectFactory::ConstructObject<UStaticMesh>(nullptr);
     StaticMesh->SetData(StaticMeshRenderData);
 
-    AssetManager->StaticMeshAssetMap.Add(StaticMeshRenderData->ObjectName, StaticMesh); // TODO: 장기적으로 보면 파일 이름 대신 경로를 Key로 사용하는게 좋음.
+    AssetManager->AddStaticMeshAsset(StaticMeshRenderData->ObjectName, StaticMesh); // TODO: 장기적으로 보면 파일 이름 대신 경로를 Key로 사용하는게 좋음.
     return StaticMesh;
 }

@@ -53,14 +53,33 @@ public:
 
     const TMap<FName, FAssetInfo>& GetAssetRegistry();
 
-    USkeletalMesh* GetSkeletalMesh(FWString name);
-    UStaticMesh* GetStaticMesh(FWString name);
+    USkeletalMesh* GetSkeletalMeshAsset(FWString name);
 
+    UStaticMesh* GetStaticMeshAsset(FWString name);
+
+    void AddSkeletalMeshAsset(FWString name, USkeletalMesh* InSkeletalMesh);
+
+    void AddStaticMeshAsset(FWString name, UStaticMesh* InStaticMesh);
+
+    FSkeletalMeshRenderData* GetSkeletalMeshRenderData(FString name);
+
+    FStaticMeshRenderData* GetStaticMeshRenderData(FString name);
+
+    void AddSkeletalMeshRenderData(FString name, FSkeletalMeshRenderData* InSkeletalMeshRenderData);
+
+    void AddStaticMeshRenderData(FString name, FStaticMeshRenderData* InStaticMeshRenderData);
+
+    TMap<FString, UMaterial*>& GetMaterials() { return MaterialMap; }
+
+    UMaterial* GetMaterial(FString name);
+
+    int GetMaterialNum() { return MaterialMap.Num(); }
+
+private:
+    void LoadObjFiles();
     static TMap<FWString, UStaticMesh*> StaticMeshAssetMap;
     static TMap<FWString, USkeletalMesh*> SkeletalMeshAssetMap;
     static TMap<FString, FStaticMeshRenderData*> StaticMeshRenderDataMap;
     static TMap<FString, FSkeletalMeshRenderData*> SkeletalMeshRenderDataMap;
-    static TMap<FString, UMaterial*> MaterialAssetMap;
-private:
-    void LoadObjFiles();
+    static TMap<FString, UMaterial*> MaterialMap;
 };

@@ -4,9 +4,7 @@
 
 #include "Container/String.h"
 #include "SkeletalMesh.h"
-
-struct FSkeletalMeshRenderData;
-struct FStaticMeshRenderData;
+#include "Asset/SkeletalMeshAsset.h"
 
 class UStaticMesh;
 class UMaterial;
@@ -35,13 +33,23 @@ class FFbxManager
 {
 public:
     static FStaticMeshRenderData* LoadFbxStaticMeshAsset(const FString& PathFileName);
+
     static FSkeletalMeshRenderData* LoadFbxSkeletalMeshAsset(const FString& PathFileName);
+
     static void CreateMesh(const FString& filePath);
+
     static bool IsFbxSkeletalMesh(FbxScene* Scene);
+
     static UStaticMesh* CreateStaticMesh(const FString& filePath);
+
     static USkeletalMesh* CreateSkeletalMesh(const FString& filePath);
+
     static void ConvertRawToSkeletalMeshRenderData(const FFbxInfo& Raw, FSkeletalMeshRenderData& Cooked);
+
     static void ConvertRawToStaticMeshRenderData(const FFbxInfo& Raw, FStaticMeshRenderData& Cooked);
+
+    static UMaterial* CreateMaterial(FMaterialInfo materialInfo);
+
 private:
     static FFbxLoader FbxLoader;
 };

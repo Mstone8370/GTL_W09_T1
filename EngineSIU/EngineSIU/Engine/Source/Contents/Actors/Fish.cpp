@@ -91,7 +91,7 @@ void AFish::BeginPlay()
             {
                 if (UFishBodyComponent* MeshComp = GetComponentByClass<UFishBodyComponent>())
                 {
-                    MeshComp->SetStaticMesh(UAssetManager::Get().GetStaticMesh(L"Contents/FishDish/FishDish.obj"));
+                    MeshComp->SetStaticMesh(UAssetManager::Get().GetStaticMeshAsset(L"Contents/FishDish/FishDish.obj"));
                 }
                 
                 if (UFishTailComponent* TailComp = GetComponentByClass<UFishTailComponent>())
@@ -149,7 +149,7 @@ void AFish::Reset()
     
     if (UFishBodyComponent* MeshComp = GetComponentByClass<UFishBodyComponent>())
     {
-        MeshComp->SetStaticMesh(UAssetManager::Get().GetStaticMesh(L"Contents/Fish/Fish_Front.obj"));
+        MeshComp->SetStaticMesh(UAssetManager::Get().GetStaticMeshAsset(L"Contents/Fish/Fish_Front.obj"));
     }
     SetActorLocation(FVector(0, 0, 0));
     SetActorRotation(FRotator(0.0f, 0.0f, 0.0f));

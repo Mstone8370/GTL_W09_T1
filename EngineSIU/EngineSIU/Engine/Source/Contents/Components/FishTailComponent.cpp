@@ -22,5 +22,5 @@ void UFishTailComponent::InitializeComponent()
 {
     UStaticMeshComponent::InitializeComponent();
     
-    SetStaticMesh(UAssetManager::Get().GetStaticMesh(L"Contents/Fish/Fish_Back.obj"));
+    SetStaticMesh(UAssetManager::Get().GetStaticMeshAsset(L"Contents/Fish/Fish_Back.obj"));
 }

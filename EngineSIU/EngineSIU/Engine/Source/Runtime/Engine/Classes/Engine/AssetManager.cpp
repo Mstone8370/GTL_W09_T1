@@ -8,7 +8,7 @@ TMap<FWString, UStaticMesh*> UAssetManager::StaticMeshAssetMap;
 TMap<FWString, USkeletalMesh*> UAssetManager::SkeletalMeshAssetMap;
 TMap<FString, FStaticMeshRenderData*> UAssetManager::StaticMeshRenderDataMap;
 TMap<FString, FSkeletalMeshRenderData*> UAssetManager::SkeletalMeshRenderDataMap;
-TMap<FString, UMaterial*> UAssetManager::MaterialAssetMap;
+TMap<FString, UMaterial*> UAssetManager::MaterialMap;
 
 UAssetManager& UAssetManager::Get()
 {
@@ -65,12 +65,47 @@ void UAssetManager::LoadObjFiles()
     }
 }
 
-USkeletalMesh* UAssetManager::GetSkeletalMesh(FWString name)
+USkeletalMesh* UAssetManager::GetSkeletalMeshAsset(FWString name)
 {
     return SkeletalMeshAssetMap[name];
 }
 
-UStaticMesh* UAssetManager::GetStaticMesh(FWString name)
+UStaticMesh* UAssetManager::GetStaticMeshAsset(FWString name)
 {
     return StaticMeshAssetMap[name];
+}
+
+UMaterial* UAssetManager::GetMaterial(FString name)
+{
+    return MaterialMap[name];
+}
+
+void UAssetManager::AddSkeletalMeshAsset(FWString name, USkeletalMesh* InSkeletalMesh)
+{
+    SkeletalMeshAssetMap.Add(name, InSkeletalMesh);
+}
+
+void UAssetManager::AddStaticMeshAsset(FWString name, UStaticMesh* InStaticMesh)
+{
+    StaticMeshAssetMap.Add(name, InStaticMesh);
+}
+
+FSkeletalMeshRenderData* UAssetManager::GetSkeletalMeshRenderData(FString name)
+{
+    return SkeletalMeshRenderDataMap[name];
+}
+
+FStaticMeshRenderData* UAssetManager::GetStaticMeshRenderData(FString name)
+{
+    return StaticMeshRenderDataMap[name];
+}
+
+void UAssetManager::AddSkeletalMeshRenderData(FString name, FSkeletalMeshRenderData* InSkeletalMeshRenderData)
+{
+    SkeletalMeshRenderDataMap.Add(name, InSkeletalMeshRenderData);
+}
+
+void UAssetManager::AddStaticMeshRenderData(FString name, FStaticMeshRenderData* InStaticMeshRenderData)
+{
+    StaticMeshRenderDataMap.Add(name, InStaticMeshRenderData);
 }

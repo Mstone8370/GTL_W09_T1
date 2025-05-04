@@ -15,7 +15,7 @@ AFireballActor::AFireballActor()
 
     SphereComp = AddComponent<USphereComp>("USphereComp_0");
     
-    SphereComp->SetStaticMesh(UAssetManager::Get().GetStaticMesh(L"Contents/Sphere.obj"));
+    SphereComp->SetStaticMesh(UAssetManager::Get().GetStaticMeshAsset(L"Contents/Sphere.obj"));
   
     PointLightComponent = AddComponent<UPointLightComponent>("UPointLightComponent_0");
     

@@ -9,7 +9,7 @@ ATriggerBox::ATriggerBox()
     RootComponent = BoxComponent;
 
     MeshComponent = AddComponent<UStaticMeshComponent>(FName("MeshComponent_0"));
-    MeshComponent->SetStaticMesh(UAssetManager::Get().GetStaticMesh(L"Contents/FryBasket/FryBasket.obj"));
+    MeshComponent->SetStaticMesh(UAssetManager::Get().GetStaticMeshAsset(L"Contents/FryBasket/FryBasket.obj"));
     MeshComponent->SetupAttachment(BoxComponent);
 }
 

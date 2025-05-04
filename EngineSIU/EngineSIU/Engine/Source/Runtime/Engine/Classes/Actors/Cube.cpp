@@ -11,7 +11,7 @@
 
 ACube::ACube()
 {
-    StaticMeshComponent->SetStaticMesh(UAssetManager::Get().GetStaticMesh(L"Contents/Reference/Reference.obj"));
+    StaticMeshComponent->SetStaticMesh(UAssetManager::Get().GetStaticMeshAsset(L"Contents/Reference/Reference.obj"));
 
     
 }

@@ -384,7 +384,7 @@ void PropertyEditorPanel::RenderForStaticMesh(UStaticMeshComponent* StaticMeshCo
                 if (ImGui::Selectable(GetData(Asset.Value.AssetName.ToString()), false))
                 {
                     FString MeshName = Asset.Value.PackagePath.ToString() + "/" + Asset.Value.AssetName.ToString();
-                    UStaticMesh* StaticMesh = UAssetManager::Get().GetStaticMesh(MeshName.ToWideString());
+                    UStaticMesh* StaticMesh = UAssetManager::Get().GetStaticMeshAsset(MeshName.ToWideString());
                     if (StaticMesh)
                     {
                         StaticMeshComp->SetStaticMesh(StaticMesh);
@@ -1081,7 +1081,7 @@ void PropertyEditorPanel::RenderMaterialView(UMaterial* Material)
     ImGui::SetNextItemWidth(160);
     // 메테리얼 이름 목록을 const char* 배열로 변환
     std::vector<const char*> MaterialChars;
-    for (const auto& Material : FObjManager::GetMaterials()) {
+    for (const auto& Material : UAssetManager::Get().GetMaterials()) {
         MaterialChars.push_back(*Material.Value->GetMaterialInfo().MaterialName);
     }
 
@@ -1089,8 +1089,8 @@ void PropertyEditorPanel::RenderMaterialView(UMaterial* Material)
     //if (currentMaterialIndex >= FManagerGetMaterialNum())
     //    currentMaterialIndex = 0;
 
-    if (ImGui::Combo("##MaterialDropdown", &CurMaterialIndex, MaterialChars.data(), FObjManager::GetMaterialNum())) {
-        UMaterial* Material = FObjManager::GetMaterial(MaterialChars[CurMaterialIndex]);
+    if (ImGui::Combo("##MaterialDropdown", &CurMaterialIndex, MaterialChars.data(), UAssetManager::Get().GetMaterialNum())) {
+        UMaterial* Material = UAssetManager::Get().GetMaterial(MaterialChars[CurMaterialIndex]);
         SelectedStaticMeshComp->SetMaterial(SelectedMaterialIndex, Material);
     }
 

@@ -4,7 +4,7 @@
 #include "Container/Map.h"
 #include "HAL/PlatformType.h"
 #include "Serialization/Serializer.h"
-
+#include "AssetManager.h"
 class UStaticMesh;
 struct FObjManager;
 
@@ -43,12 +43,6 @@ public:
 
     static UMaterial* CreateMaterial(FMaterialInfo materialInfo);
 
-    static TMap<FString, UMaterial*>& GetMaterials() { return MaterialMap; }
-
-    static UMaterial* GetMaterial(FString name);
-
-    static int GetMaterialNum() { return MaterialMap.Num(); }
-
     static UStaticMesh* CreateStaticMesh(const FString& filePath);
 
     static const TMap<FWString, UStaticMesh*>& GetStaticMeshes() { return StaticMeshMap; }
@@ -58,5 +52,4 @@ public:
 private:
     inline static TMap<FString, FStaticMeshRenderData*> ObjStaticMeshMap;
     inline static TMap<FWString, UStaticMesh*> StaticMeshMap;
-    inline static TMap<FString, UMaterial*> MaterialMap;
 };
