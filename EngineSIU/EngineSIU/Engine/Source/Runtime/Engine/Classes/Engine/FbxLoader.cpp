@@ -193,28 +193,63 @@ void FFbxLoader::ParseMesh(FbxNode* Node, FFbxInfo& OutFbxInfo)
 
     // 머티리얼 Subset (Section) 파싱
     FbxGeometryElementMaterial* MatElem = Mesh->GetElementMaterial();
-    if (MatElem && MatElem->GetMappingMode() == FbxGeometryElement::eByPolygon)
+    if (MatElem)
     {
-        int PolyCount = Mesh->GetPolygonCount();
-        TMap<int, FMaterialSubset> MatIndexToSubset;
+        auto mode = MatElem->GetMappingMode();
+        if (mode == FbxGeometryElement::eByPolygon)
+        {
+            int PolyCount = Mesh->GetPolygonCount();
+            TMap<int, FMaterialSubset> MatIndexToSubset;
 
-        for (int i = 0; i < PolyCount; ++i)
-        {
-            int MatIndex = MatElem->GetIndexArray().GetAt(i);
-            if (!MatIndexToSubset.Contains(MatIndex))
+            for (int i = 0; i < PolyCount; ++i)
             {
-                FMaterialSubset Subset;
-                Subset.MaterialIndex = MatIndex;
-                Subset.IndexStart = i * 3; // 삼각형 기준
-                Subset.IndexCount = 0;
-                MatIndexToSubset.Add(MatIndex, Subset);
+                int MatIndex = MatElem->GetIndexArray().GetAt(i);
+                // 머티리얼 이름 얻기
+                FString MaterialName;
+                FbxNode* OwnerNode = Mesh->GetNode();
+                if (OwnerNode && MatIndex < OwnerNode->GetMaterialCount())
+                {
+                    FbxSurfaceMaterial* FbxMat = OwnerNode->GetMaterial(MatIndex);
+                    if (FbxMat)
+                        MaterialName = FbxMat->GetName();
+                }
+
+                if (!MatIndexToSubset.Contains(MatIndex))
+                {
+                    FMaterialSubset Subset;
+                    Subset.MaterialIndex = MatIndex;
+                    Subset.IndexStart = i * 3; // 삼각형 기준
+                    Subset.IndexCount = 0;
+                    Subset.MaterialName = MaterialName;
+                    MatIndexToSubset.Add(MatIndex, Subset);
+                }
+                MatIndexToSubset[MatIndex].IndexCount += 3;
             }
-            MatIndexToSubset[MatIndex].IndexCount += 3;
+            for (auto& Elem : MatIndexToSubset)
+            {
+                OutMesh.MaterialSubsets.Add(Elem.Value);
+            }
         }
-        for (auto& Elem : MatIndexToSubset)
+        else if (mode == FbxGeometryElement::eAllSame)
         {
-            OutMesh.MaterialSubsets.Add(Elem.Value);
+            int MatIndex = MatElem->GetIndexArray().GetAt(0);
+            FString MaterialName;
+            FbxNode* OwnerNode = Mesh->GetNode();
+            if (OwnerNode && MatIndex < OwnerNode->GetMaterialCount())
+            {
+                FbxSurfaceMaterial* FbxMat = OwnerNode->GetMaterial(MatIndex);
+                if (FbxMat)
+                    MaterialName = FbxMat->GetName();
+            }
+
+            FMaterialSubset Subset;
+            Subset.MaterialIndex = MatElem->GetIndexArray().GetAt(0);
+            Subset.IndexStart = 0;
+            Subset.IndexCount = Mesh->GetPolygonCount() * 3; // 삼각형 기준
+            Subset.MaterialName = MaterialName;
+            OutMesh.MaterialSubsets.Add(Subset);
         }
+        // (필요시 다른 매핑 모드도 처리)
     }
 
     OutFbxInfo.Meshes.Add(OutMesh);
@@ -278,6 +313,7 @@ void FFbxLoader::ParseMaterial(FbxNode* Node, FFbxInfo& OutFbxInfo)
 
         // (필요시 Specular, Normal, 기타 파라미터도 파싱)
         OutFbxInfo.Materials.Add(MatInfo);
+        FFbxManager::CreateMaterial(MatInfo);
     }
 }
 
@@ -298,9 +334,9 @@ FStaticMeshRenderData* FFbxManager::LoadFbxStaticMeshAsset(const FString& PathFi
     UAssetManager* AssetManager = &UAssetManager::Get();
     FStaticMeshRenderData* NewStaticMesh = new FStaticMeshRenderData();
 
-    if (const auto It = AssetManager->StaticMeshRenderDataMap.Find(PathFileName))
+    if (const auto It = AssetManager->GetStaticMeshRenderData(PathFileName))
     {
-        return *It;
+        return It;
     }
 
     FFbxInfo NewFbxInfo;
@@ -313,7 +349,7 @@ FStaticMeshRenderData* FFbxManager::LoadFbxStaticMeshAsset(const FString& PathFi
     }
 
     ConvertRawToStaticMeshRenderData(NewFbxInfo, *NewStaticMesh);
-    AssetManager->StaticMeshRenderDataMap.Add(PathFileName, NewStaticMesh);
+    AssetManager->AddStaticMeshRenderData(PathFileName, NewStaticMesh);
     return NewStaticMesh;
 }
 
@@ -322,9 +358,9 @@ FSkeletalMeshRenderData* FFbxManager::LoadFbxSkeletalMeshAsset(const FString& Pa
     UAssetManager* AssetManager = &UAssetManager::Get();
     FSkeletalMeshRenderData* NewSkeletalMesh = new FSkeletalMeshRenderData();
 
-    if (const auto It = AssetManager->SkeletalMeshRenderDataMap.Find(PathFileName))
+    if (const auto It = AssetManager->GetSkeletalMeshRenderData(PathFileName))
     {
-        return *It;
+        return It;
     }
 
     FFbxInfo NewFbxInfo;
@@ -337,7 +373,7 @@ FSkeletalMeshRenderData* FFbxManager::LoadFbxSkeletalMeshAsset(const FString& Pa
     }
 
     ConvertRawToSkeletalMeshRenderData(NewFbxInfo, *NewSkeletalMesh);
-    AssetManager->SkeletalMeshRenderDataMap.Add(PathFileName, NewSkeletalMesh);
+    AssetManager->AddSkeletalMeshRenderData(PathFileName, NewSkeletalMesh);
     return NewSkeletalMesh;
 }
 
@@ -391,7 +427,7 @@ UStaticMesh* FFbxManager::CreateStaticMesh(const FString& filePath)
 
     UAssetManager* AssetManager = &UAssetManager::Get();
 
-    UStaticMesh* StaticMesh = AssetManager->GetStaticMesh(StaticMeshRenderData->ObjectName);
+    UStaticMesh* StaticMesh = AssetManager->GetStaticMeshAsset(StaticMeshRenderData->ObjectName);
     if (StaticMesh != nullptr)
     {
         return StaticMesh;
@@ -400,7 +436,7 @@ UStaticMesh* FFbxManager::CreateStaticMesh(const FString& filePath)
     StaticMesh = FObjectFactory::ConstructObject<UStaticMesh>(nullptr);
     StaticMesh->SetData(StaticMeshRenderData);
 
-    AssetManager->StaticMeshAssetMap.Add(StaticMeshRenderData->ObjectName, StaticMesh);
+    AssetManager->AddStaticMeshAsset(StaticMeshRenderData->ObjectName, StaticMesh);
     return StaticMesh;
 }
 
@@ -412,7 +448,7 @@ USkeletalMesh* FFbxManager::CreateSkeletalMesh(const FString& filePath)
 
     UAssetManager* AssetManager = &UAssetManager::Get();
 
-    USkeletalMesh* SkeletalMesh = AssetManager->GetSkeletalMesh(SkeletalMeshRenderData->ObjectName);
+    USkeletalMesh* SkeletalMesh = AssetManager->GetSkeletalMeshAsset(SkeletalMeshRenderData->ObjectName);
     if (SkeletalMesh != nullptr)
     {
         return SkeletalMesh;
@@ -421,7 +457,7 @@ USkeletalMesh* FFbxManager::CreateSkeletalMesh(const FString& filePath)
     SkeletalMesh = FObjectFactory::ConstructObject<USkeletalMesh>(nullptr);
     SkeletalMesh->SetData(SkeletalMeshRenderData);
 
-    AssetManager->SkeletalMeshAssetMap.Add(SkeletalMeshRenderData->ObjectName, SkeletalMesh);
+    AssetManager->AddSkeletalMeshAsset(SkeletalMeshRenderData->ObjectName, SkeletalMesh);
     return SkeletalMesh;
 }
 
@@ -436,8 +472,18 @@ void FFbxManager::ConvertRawToSkeletalMeshRenderData(const FFbxInfo& Raw, FSkele
         for (const FFbxVertex& Vtx : Mesh.Vertices)
         {
             FSkeletalMeshVertex NewVtx;
-            // 위치, 노멀, UV, 컬러, 탄젠트, 본 인덱스/가중치 등 복사
-            // (필요시 정점 풀기/조합별 새 정점 생성)
+            NewVtx.X = Vtx.Position.X;
+            NewVtx.Y = Vtx.Position.Y;
+            NewVtx.Z = Vtx.Position.Z;
+            NewVtx.NormalX = Vtx.Normal.X;
+            NewVtx.NormalY = Vtx.Normal.Y;
+            NewVtx.NormalZ = Vtx.Normal.Z;
+            NewVtx.U = Vtx.UV.X;
+            NewVtx.V = Vtx.UV.Y;
+            NewVtx.R = Vtx.Color.X;
+            NewVtx.G = Vtx.Color.Y;
+            NewVtx.B = Vtx.Color.Z;
+            NewVtx.A = 1.0f; // 필요시 Vtx.Color.W
             Cooked.Vertices.Add(NewVtx);
         }
         for (uint32 idx : Mesh.Indices)
@@ -460,9 +506,21 @@ void FFbxManager::ConvertRawToSkeletalMeshRenderData(const FFbxInfo& Raw, FSkele
     for (const FMaterialInfo& Mat : Raw.Materials)
         Cooked.Materials.Add(Mat);
 
-    // 4. 바운딩 박스 등 기타 정보
-    // Cooked.BoundingBoxMin = ...
-    // Cooked.BoundingBoxMax = ...
+    if (Cooked.Vertices.Num() > 0)
+    {
+        Cooked.BoundingBoxMin = FVector(Cooked.Vertices[0].X, Cooked.Vertices[0].Y, Cooked.Vertices[0].Z);
+        Cooked.BoundingBoxMax = FVector(Cooked.Vertices[0].X, Cooked.Vertices[0].Y, Cooked.Vertices[0].Z);;
+        for (const FSkeletalMeshVertex& Vtx : Cooked.Vertices)
+        {
+            FVector Pos(Vtx.X, Vtx.Y, Vtx.Z);
+            Cooked.BoundingBoxMin.X = std::min(Cooked.BoundingBoxMin.X, Pos.X);
+            Cooked.BoundingBoxMin.Y = std::min(Cooked.BoundingBoxMin.Y, Pos.Y);
+            Cooked.BoundingBoxMin.Z = std::min(Cooked.BoundingBoxMin.Z, Pos.Z);
+            Cooked.BoundingBoxMax.X = std::max(Cooked.BoundingBoxMax.X, Pos.X);
+            Cooked.BoundingBoxMax.Y = std::max(Cooked.BoundingBoxMax.Y, Pos.Y);
+            Cooked.BoundingBoxMax.Z = std::max(Cooked.BoundingBoxMax.Z, Pos.Z);
+        }
+    }
 }
 
 void FFbxManager::ConvertRawToStaticMeshRenderData(const FFbxInfo& Raw, FStaticMeshRenderData& Cooked)
@@ -491,12 +549,6 @@ void FFbxManager::ConvertRawToStaticMeshRenderData(const FFbxInfo& Raw, FStaticM
             NewVertex.NormalY = Vtx.Normal.Y;
             NewVertex.NormalZ = Vtx.Normal.Z;
 
-            //// 탄젠트 (필요시)
-            //NewVertex.TangentX = Vtx.Tangent.X;
-            //NewVertex.TangentY = Vtx.Tangent.Y;
-            //NewVertex.TangentZ = Vtx.Tangent.Z;
-            //NewVertex.TangentW = 1.0f; // 필요시
-
             // UV
             NewVertex.U = Vtx.UV.X;
             NewVertex.V = Vtx.UV.Y;
@@ -514,26 +566,39 @@ void FFbxManager::ConvertRawToStaticMeshRenderData(const FFbxInfo& Raw, FStaticM
         // MaterialSubsets(Section) 복사
         for (const FMaterialSubset& Subset : Mesh.MaterialSubsets)
             Cooked.MaterialSubsets.Add(Subset);
+
+        
     }
 
     // 3. 머티리얼 정보 복사
     for (const FMaterialInfo& Mat : Raw.Materials)
         Cooked.Materials.Add(Mat);
 
-    //// 4. 바운딩 박스 계산 (필요시)
-    //if (Cooked.Vertices.Num() > 0)
-    //{
-    //    Cooked.BoundingBoxMin = Cooked.Vertices[0].GetPosition();
-    //    Cooked.BoundingBoxMax = Cooked.Vertices[0].GetPosition();
-    //    for (const FStaticMeshVertex& Vtx : Cooked.Vertices)
-    //    {
-    //        FVector Pos(Vtx.X, Vtx.Y, Vtx.Z);
-    //        Cooked.BoundingBoxMin.X = std::min(Cooked.BoundingBoxMin.X, Pos.X);
-    //        Cooked.BoundingBoxMin.Y = std::min(Cooked.BoundingBoxMin.Y, Pos.Y);
-    //        Cooked.BoundingBoxMin.Z = std::min(Cooked.BoundingBoxMin.Z, Pos.Z);
-    //        Cooked.BoundingBoxMax.X = std::max(Cooked.BoundingBoxMax.X, Pos.X);
-    //        Cooked.BoundingBoxMax.Y = std::max(Cooked.BoundingBoxMax.Y, Pos.Y);
-    //        Cooked.BoundingBoxMax.Z = std::max(Cooked.BoundingBoxMax.Z, Pos.Z);
-    //    }
-    //}
+    if (Cooked.Vertices.Num() > 0)
+    {
+        Cooked.BoundingBoxMin = FVector(Cooked.Vertices[0].X, Cooked.Vertices[0].Y, Cooked.Vertices[0].Z);
+        Cooked.BoundingBoxMax = FVector(Cooked.Vertices[0].X, Cooked.Vertices[0].Y, Cooked.Vertices[0].Z);;
+        for (const FStaticMeshVertex& Vtx : Cooked.Vertices)
+        {
+            FVector Pos(Vtx.X, Vtx.Y, Vtx.Z);
+            Cooked.BoundingBoxMin.X = std::min(Cooked.BoundingBoxMin.X, Pos.X);
+            Cooked.BoundingBoxMin.Y = std::min(Cooked.BoundingBoxMin.Y, Pos.Y);
+            Cooked.BoundingBoxMin.Z = std::min(Cooked.BoundingBoxMin.Z, Pos.Z);
+            Cooked.BoundingBoxMax.X = std::max(Cooked.BoundingBoxMax.X, Pos.X);
+            Cooked.BoundingBoxMax.Y = std::max(Cooked.BoundingBoxMax.Y, Pos.Y);
+            Cooked.BoundingBoxMax.Z = std::max(Cooked.BoundingBoxMax.Z, Pos.Z);
+        }
+    }
+}
+
+UMaterial* FFbxManager::CreateMaterial(FMaterialInfo materialInfo)
+{
+    UAssetManager* AssetManager = &UAssetManager::Get();
+    if (AssetManager->GetMaterial(materialInfo.MaterialName) != nullptr)
+        return AssetManager->GetMaterial(materialInfo.MaterialName);
+
+    UMaterial* newMaterial = FObjectFactory::ConstructObject<UMaterial>(nullptr); // Material은 Outer가 없이 따로 관리되는 객체이므로 Outer가 없음으로 설정. 추후 Garbage Collection이 추가되면 AssetManager를 생성해서 관리.
+    newMaterial->SetMaterialInfo(materialInfo);
+    AssetManager->GetMaterials().Add(materialInfo.MaterialName, newMaterial);
+    return newMaterial;
 }

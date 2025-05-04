@@ -24,6 +24,7 @@
 #include "tinyfiledialogs.h"
 
 #include "Actors/Cube.h"
+#include "Classes/Animation/SkeletalMeshActor.h"
 
 #include "Engine/EditorEngine.h"
 #include <Actors/HeightFogActor.h>
@@ -310,6 +311,7 @@ void ControlEditorPanel::CreateModifyButton(const ImVec2 ButtonSize, ImFont* Ico
 
         static const Primitive primitives[] = 
         {
+            { .Label= "SkeletalMesh", .OBJ = OBJ_SKELETALMESH},
             { .Label= "Cube",      .OBJ= OBJ_CUBE },
             { .Label= "Sphere",    .OBJ= OBJ_SPHERE },
             { .Label= "PointLight", .OBJ= OBJ_POINTLIGHT },
@@ -338,12 +340,18 @@ void ControlEditorPanel::CreateModifyButton(const ImVec2 ButtonSize, ImFont* Ico
                 AActor* SpawnedActor = nullptr;
                 switch (static_cast<OBJECTS>(primitive.OBJ))
                 {
+                case OBJ_SKELETALMESH:
+                {
+                    ASkeletalMeshActor* SkeletalActor = World->SpawnActor<ASkeletalMeshActor>();
+                    SkeletalActor->SetActorLabel(TEXT("OBJ_SKELETALMESH"));
+                    break;
+                }
                 case OBJ_SPHERE:
                 {
                     SpawnedActor = World->SpawnActor<AActor>();
                     SpawnedActor->SetActorLabel(TEXT("OBJ_SPHERE"));
                     USphereComp* SphereComp = SpawnedActor->AddComponent<USphereComp>();
-                    SphereComp->SetStaticMesh(UAssetManager::Get().GetStaticMesh(L"Contents/Sphere.obj"));
+                    SphereComp->SetStaticMesh(UAssetManager::Get().GetStaticMeshAsset(L"Contents/Sphere.obj"));
                     break;
                 }
                 case OBJ_CUBE:

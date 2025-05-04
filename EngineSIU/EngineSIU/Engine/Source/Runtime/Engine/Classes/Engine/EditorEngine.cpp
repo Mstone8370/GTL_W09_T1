@@ -9,6 +9,8 @@
 #include "Components/Light/DirectionalLightComponent.h"
 #include "UObject/UObjectIterator.h"
 
+#include "Engine/FbxLoader.h"
+
 namespace PrivateEditorSelection
 {
     static AActor* GActorSelected = nullptr;
@@ -36,7 +38,14 @@ void UEditorEngine::Init()
 
     UAssetManager::Get().InitAssetManager();
 
-    LoadLevel("Saved/AutoSaves.scene");
+    //LoadLevel("Saved/AutoSaves.scene");
+
+    FFbxManager::CreateMesh("X Bot.fbx");
+    FFbxManager::CreateMesh("XBotTriangle.fbx");
+    FFbxManager::CreateMesh("RedBox.fbx");
+    FFbxManager::CreateMesh("SK_Mannequin.FBX");
+    FFbxManager::CreateMesh("Slime.FBX");
+    FFbxManager::CreateMesh("Piggy_Bank.FBX");
 }
 
 void UEditorEngine::Release()

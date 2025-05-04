@@ -3,6 +3,7 @@
 
 enum OBJECTS : uint8
 {
+    OBJ_SKELETALMESH,
     OBJ_SPHERE,
     OBJ_CUBE,
     OBJ_SPOTLIGHT,
