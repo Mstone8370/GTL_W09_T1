@@ -74,6 +74,117 @@ const float* FMatrix::operator[](int row) const
     return M[row];
 }
 
+FVector FMatrix::ExtractScaling(float Tolerance)
+{
+    FVector Scale3D(0, 0, 0);
+
+    // For each row, find magnitude, and if its non-zero re-scale so its unit length.
+    const float SquareSum0 = (M[0][0] * M[0][0]) + (M[0][1] * M[0][1]) + (M[0][2] * M[0][2]);
+    const float SquareSum1 = (M[1][0] * M[1][0]) + (M[1][1] * M[1][1]) + (M[1][2] * M[1][2]);
+    const float SquareSum2 = (M[2][0] * M[2][0]) + (M[2][1] * M[2][1]) + (M[2][2] * M[2][2]);
+
+    if (SquareSum0 > Tolerance)
+    {
+        float Scale0 = FMath::Sqrt(SquareSum0);
+        Scale3D[0] = Scale0;
+        float InvScale0 = 1.f / Scale0;
+        M[0][0] *= InvScale0;
+        M[0][1] *= InvScale0;
+        M[0][2] *= InvScale0;
+    }
+    else
+    {
+        Scale3D[0] = 0;
+    }
+
+    if (SquareSum1 > Tolerance)
+    {
+        float Scale1 = FMath::Sqrt(SquareSum1);
+        Scale3D[1] = Scale1;
+        float InvScale1 = 1.f / Scale1;
+        M[1][0] *= InvScale1;
+        M[1][1] *= InvScale1;
+        M[1][2] *= InvScale1;
+    }
+    else
+    {
+        Scale3D[1] = 0;
+    }
+
+    if (SquareSum2 > Tolerance)
+    {
+        float Scale2 = FMath::Sqrt(SquareSum2);
+        Scale3D[2] = Scale2;
+        float InvScale2 = 1.f / Scale2;
+        M[2][0] *= InvScale2;
+        M[2][1] *= InvScale2;
+        M[2][2] *= InvScale2;
+    }
+    else
+    {
+        Scale3D[2] = 0;
+    }
+
+    return Scale3D;
+}
+
+FVector FMatrix::GetOrigin() const
+{
+    return FVector(M[3][0], M[3][1], M[3][2]);
+}
+
+float FMatrix::Determinant() const
+{
+    return	M[0][0] * (
+        M[1][1] * (M[2][2] * M[3][3] - M[2][3] * M[3][2]) -
+        M[2][1] * (M[1][2] * M[3][3] - M[1][3] * M[3][2]) +
+        M[3][1] * (M[1][2] * M[2][3] - M[1][3] * M[2][2])
+        ) -
+        M[1][0] * (
+            M[0][1] * (M[2][2] * M[3][3] - M[2][3] * M[3][2]) -
+            M[2][1] * (M[0][2] * M[3][3] - M[0][3] * M[3][2]) +
+            M[3][1] * (M[0][2] * M[2][3] - M[0][3] * M[2][2])
+            ) +
+        M[2][0] * (
+            M[0][1] * (M[1][2] * M[3][3] - M[1][3] * M[3][2]) -
+            M[1][1] * (M[0][2] * M[3][3] - M[0][3] * M[3][2]) +
+            M[3][1] * (M[0][2] * M[1][3] - M[0][3] * M[1][2])
+            ) -
+        M[3][0] * (
+            M[0][1] * (M[1][2] * M[2][3] - M[1][3] * M[2][2]) -
+            M[1][1] * (M[0][2] * M[2][3] - M[0][3] * M[2][2]) +
+            M[2][1] * (M[0][2] * M[1][3] - M[0][3] * M[1][2])
+            );
+}
+
+void FMatrix::SetAxis(int32 i, const FVector& Axis)
+{
+    if (0 <= i && i <= 2)
+    {
+        M[i][0] = Axis.X;
+        M[i][1] = Axis.Y;
+        M[i][2] = Axis.Z;
+    }
+}
+
+FVector FMatrix::GetScaledAxis(EAxis::Type InAxis) const
+{
+    switch (InAxis)
+    {
+    case EAxis::X:
+        return FVector(M[0][0], M[0][1], M[0][2]);
+
+    case EAxis::Y:
+        return FVector(M[1][0], M[1][1], M[1][2]);
+
+    case EAxis::Z:
+        return FVector(M[2][0], M[2][1], M[2][2]);
+
+    default:
+        return FVector::ZeroVector;
+    }
+}
+
 // 전치 행렬
 FMatrix FMatrix::Transpose(const FMatrix& Mat) {
     FMatrix Result;

@@ -1,10 +1,12 @@
 #include "Components/SceneComponent.h"
+
 #include "Math/Rotator.h"
 #include "Math/JungleMath.h"
 #include "UObject/Casts.h"
 #include "UObject/ObjectFactory.h"
-#include "Engine/HitResult.h""
+#include "Engine/HitResult.h"
 #include "GameFramework/Actor.h"
+#include "Math/Transform.h"
 
 USceneComponent::USceneComponent()
     : RelativeLocation(FVector(0.f, 0.f, 0.f))
@@ -151,7 +153,6 @@ FVector USceneComponent::GetUpVector() const
     return Up;
 }
 
-
 void USceneComponent::AddLocation(const FVector& InAddValue)
 {
     RelativeLocation = RelativeLocation + InAddValue;
@@ -195,7 +196,12 @@ void USceneComponent::AttachToComponent(USceneComponent* InParent)
     }
 }
 
-void USceneComponent::SetWorldLocation(const FVector& InLocation)
+FTransform USceneComponent::GetRelativeTransform() const
+{
+    return FTransform(RelativeRotation, RelativeLocation, RelativeScale3D);
+}
+
+void USceneComponent::SetComponentLocation(const FVector& InLocation)
 {
     // TODO: 코드 최적화 방법 생각하기
     FMatrix NewRelativeMatrix = FMatrix::CreateTranslationMatrix(InLocation);
@@ -208,12 +214,12 @@ void USceneComponent::SetWorldLocation(const FVector& InLocation)
     RelativeLocation = NewRelativeLocation;
 }
 
-void USceneComponent::SetWorldRotation(const FRotator& InRotation)
+void USceneComponent::SetComponentRotation(const FRotator& InRotation)
 {
-    SetWorldRotation(InRotation.ToQuaternion());
+    SetComponentRotation(InRotation.Quaternion());
 }
 
-void USceneComponent::SetWorldRotation(const FQuat& InQuat)
+void USceneComponent::SetComponentRotation(const FQuat& InQuat)
 {
     // TODO: 코드 최적화 방법 생각하기
     FMatrix NewRelativeMatrix = InQuat.ToMatrix();
@@ -227,7 +233,7 @@ void USceneComponent::SetWorldRotation(const FQuat& InQuat)
     RelativeRotation.Normalize();   
 }
 
-void USceneComponent::SetWorldScale3D(const FVector& InScale)
+void USceneComponent::SetComponentScale3D(const FVector& InScale)
 {
     // TODO: 코드 최적화 방법 생각하기
     FMatrix NewRelativeMatrix = FMatrix::CreateScaleMatrix(InScale.X, InScale.Y, InScale.Z);
@@ -255,6 +261,11 @@ FRotator USceneComponent::GetWorldRotation() const
 FVector USceneComponent::GetWorldScale3D() const
 {
     return GetWorldMatrix().GetScaleVector();
+}
+
+FTransform USceneComponent::GetWorldTransform() const
+{
+    return FTransform(GetWorldRotation(), GetWorldLocation(), GetWorldScale3D());
 }
 
 FMatrix USceneComponent::GetScaleMatrix() const
@@ -330,7 +341,7 @@ void USceneComponent::DetachFromComponent(USceneComponent* Target)
 
 void USceneComponent::SetRelativeRotation(const FRotator& InRotation)
 {
-    SetRelativeRotation(InRotation.GetNormalized().ToQuaternion());
+    SetRelativeRotation(InRotation.GetNormalized().Quaternion());
 }
 
 void USceneComponent::SetRelativeRotation(const FQuat& InQuat)
@@ -339,6 +350,40 @@ void USceneComponent::SetRelativeRotation(const FQuat& InQuat)
 
     RelativeRotation = NormalizedQuat.Rotator();
     RelativeRotation.Normalize();
+}
+
+void USceneComponent::SetRelativeTransform(const FTransform& InTransform)
+{
+    RelativeLocation = InTransform.GetTranslation();
+    RelativeRotation = InTransform.GetRotation().GetNormalized().Rotator();
+    RelativeScale3D = InTransform.GetScale3D();
+
+    UpdateOverlaps();
+}
+
+void USceneComponent::SetComponentTransform(const FTransform& InTransform)
+{
+    // 월드 트랜스폼을 상대 트랜스폼으로 변환
+    if (AttachParent)
+    {
+        // 부모의 월드 트랜스폼 가져오기
+        FTransform ParentWorldTransform = AttachParent->GetWorldTransform();
+        
+        // 월드 트랜스폼에서 상대 트랜스폼 계산
+        // 상대 트랜스폼 = 월드 트랜스폼 * 부모 월드 트랜스폼^-1
+        FTransform RelativeTransform = InTransform.GetRelativeTransform(ParentWorldTransform);
+        
+        // 상대 트랜스폼 설정
+        SetRelativeTransform(RelativeTransform);
+    }
+    else
+    {
+        // 부모가 없으면 월드 트랜스폼이 그대로 상대 트랜스폼
+        SetRelativeTransform(InTransform);
+    }
+    
+    // 오버랩 업데이트 (충돌 관련 컴포넌트인 경우)
+    UpdateOverlaps();
 }
 
 void USceneComponent::UpdateOverlaps(const TArray<FOverlapInfo>* PendingOverlaps, bool bDoNotifies, const TArray<const FOverlapInfo>* OverlapsAtEndLocation)
@@ -353,7 +398,7 @@ bool USceneComponent::MoveComponent(const FVector& Delta, const FQuat& NewRotati
 
 bool USceneComponent::MoveComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* OutHit)
 {
-    return MoveComponentImpl(Delta, NewRotation.ToQuaternion(), bSweep, OutHit);
+    return MoveComponentImpl(Delta, NewRotation.Quaternion(), bSweep, OutHit);
 }
 
 void USceneComponent::UpdateOverlapsImpl(const TArray<FOverlapInfo>* PendingOverlaps, bool bDoNotifies, const TArray<const FOverlapInfo>* OverlapsAtEndLocation)
@@ -384,10 +429,10 @@ bool USceneComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewRo
         *OutHit = FHitResult(1.f);
     }
 
-    if (!Delta.IsNearlyZero() || !NewRotation.Equals(GetWorldRotation().ToQuaternion()))
+    if (!Delta.IsNearlyZero() || !NewRotation.Equals(GetWorldRotation().Quaternion()))
     {
-        SetWorldLocation(GetWorldLocation() + Delta);
-        SetWorldRotation(NewRotation);
+        SetComponentLocation(GetWorldLocation() + Delta);
+        SetComponentRotation(NewRotation);
 
         UpdateOverlaps();
     }

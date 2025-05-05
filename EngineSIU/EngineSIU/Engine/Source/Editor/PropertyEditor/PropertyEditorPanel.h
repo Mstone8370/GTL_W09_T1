@@ -88,10 +88,6 @@ private:
     
 private:
     float Width = 0, Height = 0;
-    FVector Location = FVector(0, 0, 0);
-    FRotator Rotation = FRotator(0, 0, 0);
-    FVector Scale = FVector(0, 0, 0);
-    FVector LightDirection = FVector(0, 0, 0);
     /* Material Property */
     int SelectedMaterialIndex = -1;
     int CurMaterialIndex = -1;

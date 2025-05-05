@@ -553,7 +553,7 @@ void SLevelEditor::RegisterEditorInputDelegates()
                             {
                                 const float MoveAmount = FVector::DotProduct(Delta, TargetComponent->GetRightVector());
                                 NewLocation += TargetComponent->GetRightVector() * MoveAmount;
-                                TargetComponent->SetWorldLocation(NewLocation);
+                                TargetComponent->SetComponentLocation(NewLocation);
                             }
                             else if (Gizmo->GetGizmoType() == UGizmoBaseComponent::ArrowZ)
                             {
@@ -561,7 +561,7 @@ void SLevelEditor::RegisterEditorInputDelegates()
                                 NewLocation += TargetComponent->GetUpVector() * MoveAmount;
                             }
                         }
-                        TargetComponent->SetWorldLocation(NewLocation);
+                        TargetComponent->SetComponentLocation(NewLocation);
                     }
                 }
             }

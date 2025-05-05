@@ -139,6 +139,11 @@ struct FMath
         return Abs<float>(Value) <= ErrorTolerance;
     }
 
+    [[nodiscard]] static FORCEINLINE bool IsNearlyEqual(float A, float B, float ErrorTolerance = SMALL_NUMBER)
+    {
+        return Abs<float>(A - B) <= ErrorTolerance;
+    }
+
     // Begin Interpolations
     /** A와 B를 Alpha값에 따라 선형으로 보간합니다. */
     template <typename T>
@@ -555,14 +560,14 @@ struct FMath
         return fmodf(X, Y);
     }
 
-    static int RandHelper(int max)
+    [[nodiscard]]static int RandHelper(int max)
     {
         static std::mt19937 rng(std::random_device{}());
         std::uniform_int_distribution<int> dist(0, max - 1);
         return dist(rng);
     }
 
-    static float PerlinNoise1D(float x)
+    [[nodiscard]] static float PerlinNoise1D(float x)
     {
         static auto fade = [](float t) -> float
         {
@@ -594,4 +599,14 @@ struct FMath
         int b = p[xi + 1];
         return lerp(grad(a, xf), grad(b, xf - 1.0f), u);
     }
+
+    template <typename T>
+    [[nodiscard]] static T Min3(const T& A, const T& B, const T& C)
+    {
+        return FMath::Min(A, FMath::Min(B, C));
+    }
+
+    static FORCEINLINE bool IsFinite(float x) { return _finite(x); }
+    static FORCEINLINE bool IsNaN(float A) { return _isnan(A); }
+    
 };
