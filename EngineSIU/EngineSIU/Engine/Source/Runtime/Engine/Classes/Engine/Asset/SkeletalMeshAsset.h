@@ -3,6 +3,7 @@
 #include "Define.h"
 #include "Hal/PlatformType.h"
 #include "Container/Array.h"
+#include "Math/Transform.h"
 
 struct FBoneInfo
 {
@@ -22,6 +23,7 @@ struct FSkeletalMeshVertex
     float U = 0, V = 0;
     uint32 BoneIndices[4] = { 0, 0, 0, 0 };
     float BoneWeights[4] = { 0.f, 0.f, 0.f, 0.f };
+
 };
 
 struct FSkeletalMeshRenderData
@@ -42,4 +44,6 @@ struct FSkeletalMeshRenderData
     
     TArray<FBoneInfo> SkeletonBones;
     TArray<FMatrix> InverseBindPoseMatrices;
+    // 각 뼈의 참조 포즈(바인드 포즈) 로컬 변환 저장
+    TArray<FTransform> ReferenceLocalTransforms;
 };

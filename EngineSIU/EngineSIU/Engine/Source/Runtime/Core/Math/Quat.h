@@ -31,8 +31,8 @@ public:
     FQuat(float InW, float InX, float InY, float InZ)
         : W(InW), X(InX), Y(InY), Z(InZ)
     {}
-
-    FQuat(const FMatrix& InMatrix);
+    
+    explicit FQuat(const FMatrix& InMatrix);
 
 public:
     /**

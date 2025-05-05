@@ -511,6 +511,17 @@ bool FMatrix::Equals(const FMatrix& Other, float Tolerance) const
             }
         }
     }
-
+ 
     return true;
 }
+
+FVector FMatrix::TransformVector(const FVector& v) const
+{
+    return TransformVector(v, *this);
+}
+
+FVector4 FMatrix::TransformFVector(const FVector4& v) const
+{
+    return TransformVector(v, *this);
+}
+

@@ -21,6 +21,7 @@ struct FTransform
     explicit FTransform(const FVector& InTranslation);
     explicit FTransform(const FQuat& InRotation);
     explicit FTransform(const FRotator& InRotation);
+    explicit FTransform(const FMatrix& InMatrix);
     
     // 변환 함수들
     FVector TransformPosition(const FVector& V) const;

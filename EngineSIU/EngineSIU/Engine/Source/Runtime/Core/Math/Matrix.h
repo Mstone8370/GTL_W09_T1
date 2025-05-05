@@ -66,7 +66,18 @@ public:
     void RemoveScaling(float Tolerance = SMALL_NUMBER);
 
     bool Equals(const FMatrix& Other, float Tolerance = KINDA_SMALL_NUMBER) const;
+
+    
+    FVector TransformVector(const FVector& v) const;
+    FVector4 TransformFVector(const FVector4& v) const;
+
+    FMatrix Inverse() const;
 };
+
+inline FMatrix FMatrix::Inverse() const
+{
+    return FMatrix::Inverse(*this);
+}
 
 inline FArchive& operator<<(FArchive& Ar, FMatrix& M)
 {

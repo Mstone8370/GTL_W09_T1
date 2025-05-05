@@ -595,6 +595,44 @@ void FFbxLoader::CollectBoneRecursive(
              OutRenderData.InverseBindPoseMatrices[CurrentBoneIndex] = (UeInverseBindMatrix); // 덜 효율적
         }
 
+        // 참조 포즈 로컬 변환 계산
+        FTransform RefLocalTransform = FTransform::Identity;
+        if (ParentBoneIndex != INDEX_NONE)
+        {
+            // 부모의 바인드 포즈 전역 행렬 가져오기 (주의: InverseBindPoseMatrices는 역행렬임)
+            if (ParentBoneIndex < OutRenderData.InverseBindPoseMatrices.Num())
+            {
+                FMatrix ParentRefGlobalMatrix = OutRenderData.InverseBindPoseMatrices[ParentBoneIndex].Inverse(); // 역행렬의 역행렬 = 원본
+                FMatrix CurrentRefGlobalMatrix = ConvertMatrixUE(BindPoseGlobalMatrix); // FbxPose 또는 Cluster에서 얻은 행렬
+
+                // 로컬 행렬 계산: Local = inv(ParentGlobal) * Global
+                FMatrix RefLocalMatrix = CurrentRefGlobalMatrix * ParentRefGlobalMatrix.Inverse();
+
+                // FMatrix를 FTransform으로 변환 (주의: FMatrix -> FTransform 변환 함수 필요)
+                RefLocalTransform = FTransform(RefLocalMatrix); // 실제 변환 함수 사용 필요
+            }
+            else
+            {
+                OutputDebugStringA(std::format("Error: Invalid parent index ({}) when calculating ref local transform for bone '{}'.\n", ParentBoneIndex, (CurrentNode->GetName())).c_str());
+            }
+        }
+        else // 루트 뼈
+        {
+            // 루트 뼈의 로컬 변환은 전역 변환과 같음
+            RefLocalTransform = FTransform(ConvertMatrixUE(BindPoseGlobalMatrix)); // FMatrix -> FTransform 변환 함수 필요
+        }
+
+        // 계산된 참조 로컬 변환 저장 (배열 크기 관리 주의)
+        if (OutRenderData.ReferenceLocalTransforms.Num() == CurrentBoneIndex)
+        {
+            OutRenderData.ReferenceLocalTransforms.Add(RefLocalTransform);
+        }
+        else
+        {
+            // 인덱스 오류 처리
+            OutRenderData.ReferenceLocalTransforms[CurrentBoneIndex] = (RefLocalTransform);
+        }
+
 
         // *이* 본의 자식들을 위한 ParentBoneIndex 업데이트
         ParentBoneIndex = CurrentBoneIndex;

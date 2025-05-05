@@ -39,7 +39,7 @@ protected:
 
     void RenderAllSkeletalMeshes(const std::shared_ptr<FEditorViewportClient>& Viewport);
 
-    void RenderSkeletalMesh(const FSkeletalMeshRenderData* RenderData) const;
+    void RenderSkeletalMesh(USkeletalMeshComponent* Component) const;
 
     void RenderSkeletalMesh(ID3D11Buffer* Buffer, UINT VerticesNum) const;
 
