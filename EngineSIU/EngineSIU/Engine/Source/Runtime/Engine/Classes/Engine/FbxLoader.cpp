@@ -853,6 +853,7 @@ bool FFbxLoader::FBXConvertScene()
         // FBX SDK를 사용하여 씬 전체의 좌표계를 변환합니다.
         // 이 함수는 노드 변환, 애니메이션 커브 등을 재귀적으로 수정합니다.
         EngineAxisSystem.ConvertScene(Scene);
+        //EngineAxisSystem.DeepConvertScene(Scene);
   
     }
     else
