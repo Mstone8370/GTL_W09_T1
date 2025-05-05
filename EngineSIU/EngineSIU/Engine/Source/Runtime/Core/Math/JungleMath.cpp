@@ -180,7 +180,7 @@ FVector JungleMath::QuaternionToEuler(const FQuat& quat)
 
 FVector JungleMath::FVectorRotate(FVector& origin, const FRotator& InRotation)
 {
-    return InRotation.ToQuaternion().RotateVector(origin);
+    return InRotation.Quaternion().RotateVector(origin);
 }
 
 FMatrix JungleMath::CreateRotationMatrix(FVector rotation)

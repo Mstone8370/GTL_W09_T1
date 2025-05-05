@@ -120,6 +120,11 @@ FQuat FQuat::operator*(const FQuat& Other) const
         );
 }
 
+bool FQuat::operator==(const FQuat& Q) const
+{
+    return Equals(Q, SMALL_NUMBER);
+}
+
 FVector FQuat::RotateVector(const FVector& Vec) const
 {
     // 벡터를 쿼터니언으로 변환
@@ -182,6 +187,11 @@ FVector FQuat::GetRotationAxis() const
     // 벡터 정규화
     const float Scale = FMath::InvSqrt(SquareSum);
     return FVector{X * Scale, Y * Scale, Z * Scale};
+}
+
+bool FQuat::ContainsNaN() const
+{
+    return FMath::IsNaN(X) || FMath::IsNaN(Y) || FMath::IsNaN(Z) || FMath::IsNaN(W);
 }
 
 FQuat FQuat::Slerp_NotNormalized(const FQuat& Quat1, const FQuat& Quat2, float Slerp)
@@ -294,4 +304,19 @@ FRotator FQuat::Rotator() const
     FRotator RotatorFromQuat = FRotator(Pitch, Yaw, Roll);
 
     return RotatorFromQuat;
+}
+
+FQuat FQuat::Inverse() const
+{
+    return FQuat(-X, -Y, -Z, W);
+}
+
+FString FQuat::ToString() const
+{
+    return FString::Printf(TEXT("X=%.9f Y=%.9f Z=%.9f W=%.9f"), X, Y, Z, W);
+}
+
+bool FQuat::IsIdentity() const
+{
+    return X == 0.0f && Y == 0.0f && Z == 0.0f && W == 1.0f;
 }

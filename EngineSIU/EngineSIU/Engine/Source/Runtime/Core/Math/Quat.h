@@ -52,6 +52,8 @@ public:
     // 쿼터니언의 곱셈 연산 (회전 결합)
     FQuat operator*(const FQuat& Other) const;
 
+    bool operator==(const FQuat& Q) const;
+
     // (쿼터니언) 벡터 회전
     FVector RotateVector(const FVector& Vec) const;
 
@@ -118,6 +120,8 @@ public:
         return FMath::Acos(FMath::Clamp((2 * InnerProd * InnerProd) - 1.f, -1.f, 1.f));
     }
 
+    bool ContainsNaN() const;
+
     static FQuat Slerp_NotNormalized(const FQuat& Quat1, const FQuat& Quat2, float Slerp);
 
     static FORCEINLINE FQuat Slerp(const FQuat& Quat1, const FQuat& Quat2, float Slerp)
@@ -134,6 +138,12 @@ public:
     FMatrix ToMatrix() const;
 
     FRotator Rotator() const;
+
+    FQuat Inverse() const;
+
+    FString ToString() const;
+
+    bool IsIdentity() const;
 };
 
 inline FArchive& operator<<(FArchive& Ar, FQuat& Q)

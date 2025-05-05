@@ -210,7 +210,7 @@ void USceneComponent::SetWorldLocation(const FVector& InLocation)
 
 void USceneComponent::SetWorldRotation(const FRotator& InRotation)
 {
-    SetWorldRotation(InRotation.ToQuaternion());
+    SetWorldRotation(InRotation.Quaternion());
 }
 
 void USceneComponent::SetWorldRotation(const FQuat& InQuat)
@@ -330,7 +330,7 @@ void USceneComponent::DetachFromComponent(USceneComponent* Target)
 
 void USceneComponent::SetRelativeRotation(const FRotator& InRotation)
 {
-    SetRelativeRotation(InRotation.GetNormalized().ToQuaternion());
+    SetRelativeRotation(InRotation.GetNormalized().Quaternion());
 }
 
 void USceneComponent::SetRelativeRotation(const FQuat& InQuat)
@@ -353,7 +353,7 @@ bool USceneComponent::MoveComponent(const FVector& Delta, const FQuat& NewRotati
 
 bool USceneComponent::MoveComponent(const FVector& Delta, const FRotator& NewRotation, bool bSweep, FHitResult* OutHit)
 {
-    return MoveComponentImpl(Delta, NewRotation.ToQuaternion(), bSweep, OutHit);
+    return MoveComponentImpl(Delta, NewRotation.Quaternion(), bSweep, OutHit);
 }
 
 void USceneComponent::UpdateOverlapsImpl(const TArray<FOverlapInfo>* PendingOverlaps, bool bDoNotifies, const TArray<const FOverlapInfo>* OverlapsAtEndLocation)
@@ -384,7 +384,7 @@ bool USceneComponent::MoveComponentImpl(const FVector& Delta, const FQuat& NewRo
         *OutHit = FHitResult(1.f);
     }
 
-    if (!Delta.IsNearlyZero() || !NewRotation.Equals(GetWorldRotation().ToQuaternion()))
+    if (!Delta.IsNearlyZero() || !NewRotation.Equals(GetWorldRotation().Quaternion()))
     {
         SetWorldLocation(GetWorldLocation() + Delta);
         SetWorldRotation(NewRotation);

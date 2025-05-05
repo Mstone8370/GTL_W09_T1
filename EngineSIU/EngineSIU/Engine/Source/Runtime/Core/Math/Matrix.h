@@ -1,5 +1,6 @@
 #pragma once
 #include "Serialization/Archive.h"
+#include "Axis.h"
 
 struct FVector;
 struct FVector4;
@@ -29,6 +30,13 @@ public:
     FMatrix operator/(float Scalar) const;
     float* operator[](int row);
     const float* operator[](int row) const;
+
+    FVector ExtractScaling(float Tolerance = SMALL_NUMBER);
+    FVector GetOrigin() const;
+    float Determinant() const;
+
+    void SetAxis(int32 i, const FVector& Axis);
+    FVector GetScaledAxis(EAxis::Type InAxis) const;
 
     // 유틸리티 함수
     static FMatrix Transpose(const FMatrix& Mat);
