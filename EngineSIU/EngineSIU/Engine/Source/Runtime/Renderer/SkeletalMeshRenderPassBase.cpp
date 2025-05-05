@@ -101,21 +101,30 @@ void FSkeletalMeshRenderPassBase::RenderSkeletalMesh(const FSkeletalMeshRenderDa
     UINT Stride = sizeof(FSkeletalMeshVertex);
     UINT Offset = 0;
 
+    FSkeletalMeshRenderData TempSkinnedData = *RenderData;
+    for (FSkeletalMeshVertex& Vtx : TempSkinnedData.Vertices)
+    {
+        FVector SkinnedPos = SkinVertexPosition(Vtx, *RenderData);
+        Vtx.X = SkinnedPos.X;
+        Vtx.Y = SkinnedPos.Y;
+        Vtx.Z = SkinnedPos.Z;
+    }
+
     FVertexInfo VertexInfo;
-    BufferManager->CreateVertexBuffer(RenderData->ObjectName, RenderData->Vertices, VertexInfo);
+    BufferManager->CreateVertexBuffer(TempSkinnedData.ObjectName, TempSkinnedData.Vertices, VertexInfo);
 
     Graphics->DeviceContext->IASetVertexBuffers(0, 1, &VertexInfo.VertexBuffer, &Stride, &Offset);
 
     FIndexInfo IndexInfo;
-    BufferManager->CreateIndexBuffer(RenderData->ObjectName, RenderData->Indices, IndexInfo);
+    BufferManager->CreateIndexBuffer(TempSkinnedData.ObjectName, TempSkinnedData.Indices, IndexInfo);
     if (IndexInfo.IndexBuffer)
     {
         Graphics->DeviceContext->IASetIndexBuffer(IndexInfo.IndexBuffer, DXGI_FORMAT_R32_UINT, 0);
-        Graphics->DeviceContext->DrawIndexed(RenderData->Indices.Num(), 0, 0);
+        Graphics->DeviceContext->DrawIndexed(TempSkinnedData.Indices.Num(), 0, 0);
     }
     else
     {
-        Graphics->DeviceContext->Draw(RenderData->Vertices.Num(), 0);
+        Graphics->DeviceContext->Draw(TempSkinnedData.Vertices.Num(), 0);
     }
 }
 
@@ -136,4 +145,22 @@ void FSkeletalMeshRenderPassBase::UpdateObjectConstant(const FMatrix& WorldMatri
     ObjectData.bIsSelected = bIsSelected;
 
     BufferManager->UpdateConstantBuffer(TEXT("FObjectConstantBuffer"), ObjectData);
+}
+
+FVector FSkeletalMeshRenderPassBase::SkinVertexPosition(const FSkeletalMeshVertex& Vertex, const FSkeletalMeshRenderData& RenderData) const
+{
+    FVector Result = { 0, 0, 0 };
+
+    for (int i = 0; i < 4; ++i) {
+        int BoneIndex = Vertex.BoneIndices[i];
+        float weight = Vertex.BoneWeights[i];
+        if (weight > 0.f && BoneIndex >= 0 && BoneIndex < RenderData.BoneBindPoseTransforms.Num())
+        {
+            FMatrix SkinMatrix = RenderData.BoneBindPoseTransforms[BoneIndex].ToMatrixWithScale();
+            FVector Pos(Vertex.X, Vertex.Y, Vertex.Z);
+            FVector Transformed = SkinMatrix.TransformPosition(Pos);
+            Result = Result + (FVector{ Transformed.X, Transformed.Y, Transformed.Z } *weight);
+        }
+    }
+    return Result;
 }

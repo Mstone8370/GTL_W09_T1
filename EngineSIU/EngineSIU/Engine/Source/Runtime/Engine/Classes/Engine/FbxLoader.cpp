@@ -213,6 +213,14 @@ bool FFbxLoader::LoadFBX(const FString& InFilePath, FSkeletalMeshRenderData& Out
         return false;
     }
 
+    // Step 1: 좌표계 변환 (Unreal 기준 - Z Up, Left-Handed)
+    const FbxAxisSystem UnrealAxisSystem(FbxAxisSystem::eZAxis, FbxAxisSystem::eParityOdd, FbxAxisSystem::eLeftHanded);
+    UnrealAxisSystem.ConvertScene(Scene); // 좌표계 변환 적용
+
+    // Step 2: 단위 변환 (Unreal 기준 - cm 단위)
+    const FbxSystemUnit UnrealUnit(FbxSystemUnit::cm);
+    UnrealUnit.ConvertScene(Scene); // 단위 보정 (1.0f == 1cm)
+
     // Basic Setup
     OutRenderData.ObjectName = InFilePath.ToWideString();
     OutRenderData.DisplayName = ""; // TODO: temp
@@ -237,19 +245,42 @@ bool FFbxLoader::LoadFBX(const FString& InFilePath, FSkeletalMeshRenderData& Out
     FbxSystemUnit SystemUnit = GlobalSettings.GetSystemUnit();
     const double ScaleFactor = SystemUnit.GetScaleFactor();
     OutputDebugStringA(std::format("### FBX ###\nScene Scale: {} cm\n", ScaleFactor).c_str());
-    
+    FbxSystemUnit Unit = Scene->GetGlobalSettings().GetSystemUnit();
+    double Scale = Unit.GetScaleFactor();
+
     if (FbxNode* RootNode = Scene->GetRootNode())
     {
         FbxGeometryConverter Converter(Manager);
         Converter.Triangulate(Scene, true);
         
-        TraverseNodeRecursive(RootNode, OutRenderData);
+        
+
+        TraverseSkeletonNodeRecursive(RootNode, OutRenderData);
+        TraverseMeshNodeRecursive(RootNode, OutRenderData);
     }
     
     return true;
 }
 
-void FFbxLoader::TraverseNodeRecursive(FbxNode* Node, FSkeletalMeshRenderData& OutRenderData)
+
+void FFbxLoader::TraverseSkeletonNodeRecursive(FbxNode* Node, FSkeletalMeshRenderData& OutRenderData)
+{
+    if (!Node)
+    {
+        return;
+    }
+    FbxNodeAttribute* Attribute = Node->GetNodeAttribute();
+    if (Attribute && Attribute->GetAttributeType() == FbxNodeAttribute::eSkeleton) {
+        ProcessSkeleton(Node, OutRenderData);
+    }
+
+    for (int32 i = 0; i < Node->GetChildCount(); ++i)
+    {
+        TraverseSkeletonNodeRecursive(Node->GetChild(i), OutRenderData);
+    }
+}
+
+void FFbxLoader::TraverseMeshNodeRecursive(FbxNode* Node, FSkeletalMeshRenderData& OutRenderData)
 {
     if (!Node)
     {
@@ -257,23 +288,13 @@ void FFbxLoader::TraverseNodeRecursive(FbxNode* Node, FSkeletalMeshRenderData& O
     }
 
     FbxNodeAttribute* Attribute = Node->GetNodeAttribute();
-    if (Attribute)
-    {
-        switch (Attribute->GetAttributeType())
-        {
-        case FbxNodeAttribute::eMesh:
-            ProcessMesh(Node, OutRenderData);
-            break;
-        case FbxNodeAttribute::eSkeleton:
-            break;
-        default:
-            break;
-        }
+    if (Attribute && Attribute->GetAttributeType() == FbxNodeAttribute::eMesh) {
+        ProcessMesh(Node, OutRenderData);
     }
 
     for (int32 i = 0; i < Node->GetChildCount(); ++i)
     {
-        TraverseNodeRecursive(Node->GetChild(i), OutRenderData);
+        TraverseMeshNodeRecursive(Node->GetChild(i), OutRenderData);
     }
 }
 
@@ -321,23 +342,61 @@ void FFbxLoader::ProcessMesh(FbxNode* Node, FSkeletalMeshRenderData& OutRenderDa
 
     // 컨트롤 포인트별 본·스킨 가중치 맵
     TMap<int32, TArray<TPair<int32, double>>> SkinWeightMap;
-    /*
+    
     for (int32 DeformerIdx = 0; DeformerIdx < Mesh->GetDeformerCount(FbxDeformer::eSkin); ++DeformerIdx)
     {
         FbxSkin* Skin = static_cast<FbxSkin*>(Mesh->GetDeformer(DeformerIdx, FbxDeformer::eSkin));
+        
+        if (!Skin) continue;
+
         for (int32 ClusterIdx = 0; ClusterIdx < Skin->GetClusterCount(); ++ClusterIdx)
         {
             FbxCluster* Cluster = Skin->GetCluster(ClusterIdx);
-            int32 BoneIndex = 본 인덱스 테이블에서 Cl->GetLink() 찾기;
+            if (!Cluster) continue;
+            
+            FbxNode* LinkNode = Cluster->GetLink();
+            if (!LinkNode) continue;
+            
+            FName BoneName(LinkNode->GetName());
+            int32 BoneIndex = OutRenderData.BoneNames.IndexOfByPredicate(
+                [&](const FName& Name) { return Name == BoneName; });
+
+            // BoneIndex를 못 찾으면 무시 (예: skeleton이 아직 등록되지 않은 경우)
+            if (BoneIndex == INDEX_NONE)
+            {
+                OutputDebugStringA(std::format("Warning: Bone [{}] not found in BoneNames list.\n", LinkNode->GetName()).c_str());
+                continue;
+            }
+
             auto const* CPoints = Cluster->GetControlPointIndices();
             auto const* Weights = Cluster->GetControlPointWeights();
-            for (int ControlPointIdx = 0; ControlPointIdx < Cluster->GetControlPointIndicesCount(); ++ControlPointIdx)
+            int Count = Cluster->GetControlPointIndicesCount();
+
+
+            for (int i = 0; i < Count; ++i)
             {
-                SkinWeightMap[CPoints[ControlPointIdx]].Emplace(BoneIndex, Weights[ControlPointIdx]);
+                int32 ControlPointIndex = CPoints[i];
+                double Weight = Weights[i];
+
+                if (Weight > 0.0)
+                {
+                    SkinWeightMap[ControlPointIndex].Emplace(BoneIndex, Weight);
+                }
             }
+
+            FbxAMatrix LinkMatrix;
+            Cluster->GetTransformLinkMatrix(LinkMatrix); // 💡 클러스터가 저장한 바인드 포즈
+
+            FTransform BindTransform;
+            BindTransform.Translation = TransformToTranslation(LinkMatrix);
+            BindTransform.Rotation = TransformToRotation(LinkMatrix);
+            BindTransform.Scale3D = TransformToScale(LinkMatrix);
+
+            // 덮어쓰기 (BoneIndex는 이미 Valid 확인됨)
+            OutRenderData.BoneBindPoseTransforms[BoneIndex] = BindTransform;
         }
     }
-*/
+
 
     int VertexCounter = 0; // 폴리곤 정점 인덱스 (eByPolygonVertex 모드용)
 
@@ -443,6 +502,75 @@ void FFbxLoader::ProcessMesh(FbxNode* Node, FSkeletalMeshRenderData& OutRenderDa
     } // End for each polygon
 }
 
+void FFbxLoader::ProcessSkeleton(FbxNode* Node, FSkeletalMeshRenderData& OutRenderData)
+{
+    FbxSkeleton* Skeleton = static_cast<FbxSkeleton*>(Node->GetNodeAttribute());
+    if (!Skeleton) {
+        UE_LOG(ELogLevel::Error, "Node don't have Skeleton");
+        return;
+    }
+
+    // TODO : BoneNames.Num() 이 시점에서 유효한지 확인.
+    int32 BoneIndex = OutRenderData.BoneNames.Num();
+
+    // 이름 저장
+    FName BoneName(Node->GetName());
+    OutRenderData.BoneNames.Add(BoneName);
+
+    // 부모 인덱스 탐색
+    FbxNode* Parent = Node->GetParent();
+    int32 ParentIndex = -1;
+    if (Parent) {
+        FName ParentName(Parent->GetName());
+        ParentIndex = OutRenderData.BoneNames.IndexOfByPredicate(
+            [&](const FName& Name) { return Name == ParentName; });
+
+    }
+    OutRenderData.BoneParents.Add(ParentIndex);
+
+    // 로컬 트랜스폼 및 바인드 포즈 저장
+    FbxAMatrix LocalMatrix = Node->EvaluateLocalTransform();
+    FTransform LocalTransform;
+
+    LocalTransform.Translation = TransformToTranslation(LocalMatrix);
+    LocalTransform.Rotation = TransformToRotation(LocalMatrix);
+    LocalTransform.Scale3D = TransformToScale(LocalMatrix);
+
+    OutRenderData.BoneLocalTransforms.Add(LocalTransform);
+
+   /* FbxAMatrix BindMatrix = Node->EvaluateGlobalTransform();
+    FTransform BindTransform;
+    BindTransform.Translation = TransformToTranslation(BindMatrix);
+    BindTransform.Rotation = TransformToRotation(BindMatrix);
+    BindTransform.Scale3D = TransformToScale(BindMatrix);*/
+
+  
+    OutRenderData.BoneBindPoseTransforms.Add(FTransform::Identity());
+}
+
+FVector FFbxLoader::TransformToTranslation(FbxAMatrix BindMatrix)
+{
+    return FVector(static_cast<float>(BindMatrix.GetT()[0]),
+        static_cast<float>(BindMatrix.GetT()[1]),
+        static_cast<float>(BindMatrix.GetT()[2]));
+}
+
+FQuat FFbxLoader::TransformToRotation(FbxAMatrix BindMatrix)
+{
+    return  FQuat(
+        static_cast<float>(BindMatrix.GetQ()[0]),
+        static_cast<float>(BindMatrix.GetQ()[1]),
+        static_cast<float>(BindMatrix.GetQ()[2]),
+        static_cast<float>(BindMatrix.GetQ()[3]));
+}
+
+FVector FFbxLoader::TransformToScale(FbxAMatrix BindMatrix)
+{
+    return FVector(static_cast<float>(BindMatrix.GetS()[0]),
+        static_cast<float>(BindMatrix.GetS()[1]),
+        static_cast<float>(BindMatrix.GetS()[2]));
+}
+
 std::unique_ptr<FSkeletalMeshRenderData> FFbxManager::LoadFbxSkeletalMeshAsset(const FWString& FilePath)
 {
     std::unique_ptr<FSkeletalMeshRenderData> Data = std::make_unique<FSkeletalMeshRenderData>();
@@ -484,3 +612,4 @@ USkeletalMesh* FFbxManager::GetSkeletalMesh(const FWString& FilePath)
     }
     return CreateMesh(FilePath);
 }
+

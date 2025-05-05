@@ -4,6 +4,8 @@
 
 #include "Container/Map.h"
 #include "HAL/PlatformType.h"
+#include "Runtime/Core/Math/Vector.h"
+#include "Runtime/Core/Math/Quat.h"
 
 class USkeletalMesh;
 struct FSkeletalMeshRenderData;
@@ -21,8 +23,14 @@ private:
     FbxImporter* Importer;
     FbxScene* Scene;
 
-    void TraverseNodeRecursive(FbxNode* Node, FSkeletalMeshRenderData& OutRenderData);
+    void TraverseSkeletonNodeRecursive(FbxNode* Node, FSkeletalMeshRenderData& OutRenderData);
+    void TraverseMeshNodeRecursive(FbxNode* Node, FSkeletalMeshRenderData& OutRenderData);
     void ProcessMesh(FbxNode* Node, FSkeletalMeshRenderData& OutRenderData);
+    void ProcessSkeleton(FbxNode* Node, FSkeletalMeshRenderData& OutRenderData);
+
+    FVector TransformToTranslation(FbxAMatrix BindMatrix);
+    FQuat TransformToRotation(FbxAMatrix BindMatrix);
+    FVector TransformToScale(FbxAMatrix BindMatrix);
 };
 
 class FFbxManager

@@ -5,13 +5,14 @@
 class UMaterial;
 struct FSkeletalMeshRenderData;
 class USkeletalMeshComponent;
-
+class FSkeletalMeshVertex;
 struct FMatrix;
 struct FVector4;
 struct FStaticMaterial;
 struct FStaticMeshRenderData;
 struct ID3D11Buffer;
-
+struct FVector;
+struct FTransform;
 class FSkeletalMeshRenderPassBase : public IRenderPass
 {
 public:
@@ -47,6 +48,8 @@ protected:
 
     void UpdateObjectConstant(const FMatrix& WorldMatrix, const FVector4& UUIDColor, bool bIsSelected) const;
 
+    FVector SkinVertexPosition(const FSkeletalMeshVertex& Vertex,const FSkeletalMeshRenderData& RenderData) const;
+ 
     FDXDBufferManager* BufferManager;
     FGraphicsDevice* Graphics;
     FDXDShaderManager* ShaderManager;

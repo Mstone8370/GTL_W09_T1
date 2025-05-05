@@ -156,6 +156,11 @@ void FQuat::Normalize(float Tolerance)
     }
 }
 
+FQuat FQuat::Inverse() const
+{
+    return FQuat(-X, -Y, -Z, W);
+}
+
 void FQuat::ToAxisAndAngle(FVector& Axis, float& Angle) const
 {
     Angle = (float)GetAngle();  // 각도 추출
