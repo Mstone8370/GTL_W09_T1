@@ -51,7 +51,7 @@ namespace MaterialUtils
                 Samplers[i] = Texture->SamplerState;
 
                 if (i == static_cast<uint8>(EMaterialTextureSlots::MTS_Diffuse))
-                {
+                                 {
                     // for Gouraud shading
                     Graphics->DeviceContext->VSSetShaderResources(0, 1, &Texture->TextureSRV);
                     Graphics->DeviceContext->VSSetSamplers(0, 1, &Texture->SamplerState);

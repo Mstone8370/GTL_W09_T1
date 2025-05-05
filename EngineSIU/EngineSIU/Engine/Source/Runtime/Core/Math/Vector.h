@@ -101,6 +101,7 @@ public:
 
     explicit FVector(const FRotator& InRotator);
 
+
     // Vector(0, 0, 0)
     static const FVector ZeroVector;
 

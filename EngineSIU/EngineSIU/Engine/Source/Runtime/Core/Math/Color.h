@@ -85,6 +85,9 @@ struct FColor
     static const FColor Emerald;
 };
 
+
+
+// 0~1 사이의 값을 가지는 색상 구조체
 struct FLinearColor
 {
     float R;
@@ -131,6 +134,8 @@ struct FLinearColor
     static const FLinearColor Green;
     static const FLinearColor Blue;
     static const FLinearColor Yellow;
+
+    
 
     FORCEINLINE static FLinearColor FromColor(const FColor& InColor)
     {
@@ -301,6 +306,16 @@ struct FLinearColor
     FORCEINLINE float GetMin() const
     {
         return FMath::Min(R, FMath::Min(G, FMath::Min(B, A)));
+    }
+
+    FORCEINLINE FVector ToVector() const
+    {
+        return FVector(R, G, B);
+    }
+
+    FORCEINLINE FVector4 ToVector4() const
+    {
+        return FVector4(R, G, B, A);
     }
 
     FString ToString() const;
