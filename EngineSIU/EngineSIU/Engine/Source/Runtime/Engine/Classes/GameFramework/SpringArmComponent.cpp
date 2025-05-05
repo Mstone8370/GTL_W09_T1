@@ -220,8 +220,8 @@ void USpringArmComponent::UpdateDesiredArmLocation(bool bDoTrace, bool bDoLocati
     }
 
     //UE_LOG(ELogLevel::Display, TEXT("Result Location : %.2f %.2f %.2f"), ResultLoc.X, ResultLoc.Y, ResultLoc.Z);
-    SetWorldLocation(ResultLoc);
-    SetWorldRotation(DesiredRot);
+    SetComponentLocation(ResultLoc);
+    SetComponentRotation(DesiredRot);
 }
 
 FVector USpringArmComponent::BlendLocations(const FVector& DesiredArmLocation, const FVector& TraceHitLocation, bool bHitSomething, float DeltaTime)

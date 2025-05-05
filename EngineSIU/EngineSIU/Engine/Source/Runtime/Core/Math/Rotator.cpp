@@ -107,7 +107,7 @@ FRotator FRotator::FromQuaternion(const FQuat& InQuat) const
     return FRotator(InQuat);
 }
 
-FQuat FRotator::ToQuaternion() const
+FQuat FRotator::Quaternion() const
 {
     float DegToRad = PI / 180.0f;
     float Div = DegToRad / 2.0f;
@@ -151,7 +151,7 @@ FVector FRotator::ToVector() const
 
 FVector FRotator::RotateVector(const FVector& Vec) const
 {
-    return ToQuaternion().RotateVector(Vec);
+    return Quaternion().RotateVector(Vec);
 }
 
 FMatrix FRotator::ToMatrix() const

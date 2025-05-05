@@ -35,6 +35,7 @@
 #include "LuaScripts/LuaScriptFileUtils.h"
 #include "imgui/imgui_bezier.h"
 #include "imgui/imgui_curve.h"
+#include "Math/Transform.h"
 
 void PropertyEditorPanel::Render()
 {
@@ -208,9 +209,10 @@ void PropertyEditorPanel::RenderForSceneComponent(USceneComponent* SceneComponen
     ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
     if (ImGui::TreeNodeEx("Transform", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) // 트리 노드 생성
     {
-        FVector Location = SceneComponent->GetRelativeLocation();
-        FRotator Rotation = SceneComponent->GetRelativeRotation();
-        FVector Scale = SceneComponent->GetRelativeScale3D();
+        FTransform Transform = SceneComponent->GetRelativeTransform();
+        FVector Location = Transform.GetTranslation();
+        FRotator Rotation = Transform.GetRotation().Rotator();
+        FVector Scale = Transform.GetScale3D();
 
         FImGuiWidget::DrawVec3Control("Location", Location, 0, 85);
         ImGui::Spacing();
@@ -221,9 +223,7 @@ void PropertyEditorPanel::RenderForSceneComponent(USceneComponent* SceneComponen
         FImGuiWidget::DrawVec3Control("Scale", Scale, 0, 85);
         ImGui::Spacing();
 
-        SceneComponent->SetRelativeLocation(Location);
-        SceneComponent->SetRelativeRotation(Rotation);
-        SceneComponent->SetRelativeScale3D(Scale);
+        SceneComponent->SetRelativeTransform(FTransform(Rotation, Location, Scale));
 
         std::string CoordiButtonLabel;
         if (Player->GetCoordMode() == ECoordMode::CDM_WORLD)

@@ -58,7 +58,7 @@ struct FRotator
     FRotator Add(float DeltaPitch, float DeltaYaw, float DeltaRoll) const;
 
     FRotator FromQuaternion(const FQuat& InQuat) const;
-    FQuat ToQuaternion() const;
+    FQuat Quaternion() const;
     FVector ToVector() const;
     FVector RotateVector(const FVector& Vec) const;
     FMatrix ToMatrix() const;

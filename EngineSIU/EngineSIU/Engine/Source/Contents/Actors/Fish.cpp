@@ -43,7 +43,7 @@ void AFish::PostSpawnInitialize()
     FishTail->SetupAttachment(FishBody);
 
     USpringArmComponent* SpringArmComp = AddComponent<USpringArmComponent>(FName("SpringArmComponent_0"));
-    SpringArmComp->SetWorldRotation(FRotator(0.f, 0.f, 0.f));
+    SpringArmComp->SetComponentRotation(FRotator(0.f, 0.f, 0.f));
     SpringArmComp->SetupAttachment(SphereComponent);
 
     UCameraComponent* CameraComp = AddComponent<UCameraComponent>(FName("CameraComponent_0"));

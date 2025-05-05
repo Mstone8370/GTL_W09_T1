@@ -225,8 +225,8 @@ void UCameraShakeBase::ApplyResult(float Scale, const FCameraShakePatternUpdateR
     ScaledDeltaRotator.Roll *= Scale;
     */
     
-    FQuat CurrentRotation = InOutPOV.Rotation.ToQuaternion();
-    FQuat DeltaRotation = ScaledDeltaRotator.ToQuaternion();
+    FQuat CurrentRotation = InOutPOV.Rotation.Quaternion();
+    FQuat DeltaRotation = ScaledDeltaRotator.Quaternion();
 
     FQuat FinalRotationQuat = DeltaRotation * CurrentRotation; // TODO: 앞 뒤 바꿔야 하는지 생각하기.
     FinalRotationQuat.Normalize();

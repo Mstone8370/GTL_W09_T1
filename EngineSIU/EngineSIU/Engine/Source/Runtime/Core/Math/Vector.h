@@ -100,6 +100,7 @@ public:
     explicit FVector(float Scalar) : X(Scalar), Y(Scalar), Z(Scalar) {}
 
     explicit FVector(const FRotator& InRotator);
+    explicit FVector(const FVector4& Vector4);
 
     // Vector(0, 0, 0)
     static const FVector ZeroVector;
@@ -154,6 +155,7 @@ public:
     /** Dot Product */
     float operator|(const FVector& Other) const;
     float Dot(const FVector& Other) const;
+    bool ContainsNaN() const;
     static float DotProduct(const FVector& A, const FVector& B);
 
     /** Cross Product */
@@ -172,6 +174,7 @@ public:
     FVector operator*(const FVector& Other) const;
     FVector operator*(float Scalar) const;
     FVector& operator*=(float Scalar);
+    FVector& operator*=(const FVector& Other);
 
     FVector operator/(const FVector& Other) const;
     FVector operator/(float Scalar) const;
