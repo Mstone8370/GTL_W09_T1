@@ -869,8 +869,8 @@ bool FFbxLoader::FBXConvertScene()
     //    - Up: Z 축 (eZAxis)
     //    - Forward Axis Determination: Requires Parity based on Up & Handedness to achieve X-Forward.
     //    - Handedness: 왼손 좌표계 (eLeftHanded)
-    FbxAxisSystem::EUpVector UpVector = (FbxAxisSystem::EUpVector)-FbxAxisSystem::eZAxis;
-    FbxAxisSystem::EFrontVector FrontVector = (FbxAxisSystem::EFrontVector)-FbxAxisSystem::eParityEven; 
+    FbxAxisSystem::EUpVector UpVector = FbxAxisSystem::eZAxis;
+    FbxAxisSystem::EFrontVector FrontVector = FbxAxisSystem::eParityEven; 
     FbxAxisSystem::ECoordSystem CoordSystem = FbxAxisSystem::eLeftHanded;
     FbxAxisSystem EngineAxisSystem(UpVector, FrontVector, CoordSystem);
 
@@ -890,8 +890,8 @@ bool FFbxLoader::FBXConvertScene()
 
         // FBX SDK를 사용하여 씬 전체의 좌표계를 변환합니다.
         // 이 함수는 노드 변환, 애니메이션 커브 등을 재귀적으로 수정합니다.
-        EngineAxisSystem.ConvertScene(Scene);
-        //EngineAxisSystem.DeepConvertScene(Scene);
+        //EngineAxisSystem.ConvertScene(Scene);
+        EngineAxisSystem.DeepConvertScene(Scene);
   
     }
     else

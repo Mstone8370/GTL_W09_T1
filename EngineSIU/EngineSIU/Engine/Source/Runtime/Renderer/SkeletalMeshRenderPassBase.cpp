@@ -71,7 +71,7 @@ void FSkeletalMeshRenderPassBase::PrepareRenderArr()
         }
 
         // --- 테스트 코드 시작 ---
-        int32 TargetBoneIndex = 2; // 예시: 테스트할 뼈의 인덱스
+        int32 TargetBoneIndex = 31; // 예시: 테스트할 뼈의 인덱스
         float Count = 0.01f;
         static float GameTime = 0.1f;
         GameTime += Count;
