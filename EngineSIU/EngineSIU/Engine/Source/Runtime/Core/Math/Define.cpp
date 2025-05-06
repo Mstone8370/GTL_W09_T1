@@ -79,5 +79,5 @@ void FObjMaterialInfo::SetTextureForSlot(EMaterialTextureSlots Slot, const FWStr
             // 해당 슬롯의 플래그는 변경하지 않거나, 필요시 제거하는 로직 추가 가능
             // 예: TextureFlag &= ~static_cast<uint16>(FlagToSet); // 만약 FlagToSet이 미리 계산되었다면
         }
-    }
 }
+
