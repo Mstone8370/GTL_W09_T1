@@ -26,6 +26,16 @@ void FSkeletalMeshRenderPass::PrepareRenderPass(const std::shared_ptr<FEditorVie
     ID3D11VertexShader* VertexShader = ShaderManager->GetVertexShaderByKey(L"SkeletalMeshVertexShader");
     ID3D11InputLayout* InputLayout = ShaderManager->GetInputLayoutByKey(L"SkeletalMeshVertexShader");
     ID3D11PixelShader* PixelShader = ShaderManager->GetPixelShaderByKey(L"SkeletalMeshPixelShader");
+
+    TArray<FString> PSBufferKeys = {
+        TEXT("FLightInfoBuffer"),
+        TEXT("FMaterialConstants"),
+        TEXT("FLitUnlitConstants"),
+        TEXT("FSubMeshConstants"),
+        TEXT("FTextureConstants"),
+    };
+
+    BufferManager->BindConstantBuffers(PSBufferKeys, 0, EShaderStage::Pixel);
     
     Graphics->DeviceContext->VSSetShader(VertexShader, nullptr, 0);
     Graphics->DeviceContext->IASetInputLayout(InputLayout);

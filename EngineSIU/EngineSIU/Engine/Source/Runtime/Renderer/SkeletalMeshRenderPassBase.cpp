@@ -2,6 +2,7 @@
 
 #include <format>
 
+#include "RendererHelpers.h"
 #include "UObject/UObjectIterator.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/EditorEngine.h"
@@ -147,8 +148,6 @@ void FSkeletalMeshRenderPassBase::PrepareRenderArr()
 
         // 4. 정점 변형 (Deformation)
         const int32 NumVertices = RenderData->Vertices.Num();
-        Component->SkinnedPositions.SetNum(NumVertices); // 결과 버퍼 크기 설정
-        Component->SkinnedNormals.SetNum(NumVertices);
         Component->SkinnedVertices.SetNum(NumVertices);
         // Component->SkinnedTangents.SetNum(NumVertices); // 필요 시
 
@@ -288,12 +287,30 @@ void FSkeletalMeshRenderPassBase::RenderSkeletalMesh(USkeletalMeshComponent* Com
     if (IndexInfo.IndexBuffer)
     {
         Graphics->DeviceContext->IASetIndexBuffer(IndexInfo.IndexBuffer, DXGI_FORMAT_R32_UINT, 0);
-        Graphics->DeviceContext->DrawIndexed(RenderData->Indices.Num(), 0, 0);
+        if (RenderData->MaterialSubsets.Num() == 0)
+        {
+            Graphics->DeviceContext->DrawIndexed(RenderData->Indices.Num(), 0, 0);
+            return;
+        }
+
+        for (int SubMeshIndex = 0; SubMeshIndex < RenderData->MaterialSubsets.Num(); SubMeshIndex++)
+        {
+            uint32 MaterialIndex = RenderData->MaterialSubsets[SubMeshIndex].MaterialIndex;
+            
+            MaterialUtils::UpdateMaterial(BufferManager, Graphics, RenderData->Materials[MaterialIndex]);
+            
+
+            uint32 StartIndex = RenderData->MaterialSubsets[SubMeshIndex].IndexStart;
+            uint32 IndexCount = RenderData->MaterialSubsets[SubMeshIndex].IndexCount;
+            Graphics->DeviceContext->DrawIndexed(IndexCount, StartIndex, 0);
+        }
     }
     else
     {
         Graphics->DeviceContext->Draw(RenderData->Vertices.Num(), 0);
     }
+
+
 }
 
 void FSkeletalMeshRenderPassBase::RenderSkeletalMesh(ID3D11Buffer* Buffer, UINT VerticesNum) const

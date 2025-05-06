@@ -155,6 +155,27 @@ public:
     }
 
     ElementType Pop();
+
+    
+    /**
+     * @brief 다른 TArray의 모든 요소를 이 배열의 끝에 추가합니다.
+     * @param OtherArray 추가할 요소들을 포함하는 TArray.
+     */
+    void Append(const TArray& OtherArray);
+
+    /**
+     * @brief C-스타일 배열의 요소들을 이 배열의 끝에 추가합니다.
+     * @param Ptr 추가할 요소들의 시작 포인터.
+     * @param Count 추가할 요소들의 개수.
+     */
+    void Append(const T* Ptr, SizeType Count);
+
+    // 선택 사항: std::vector를 직접 추가하는 오버로드
+    /**
+     * @brief std::vector의 모든 요소를 이 배열의 끝에 추가합니다.
+     * @param OtherVector 추가할 요소들을 포함하는 std::vector.
+     */
+    void Append(const std::vector<T>& OtherVector);
 };
 
 
@@ -409,6 +430,66 @@ typename TArray<T, Allocator>::ElementType TArray<T, Allocator>::Pop()
     ContainerPrivate.pop_back();
     return Element;
 }
+
+template <typename T, typename Allocator>
+void TArray<T, Allocator>::Append(const TArray& OtherArray)
+{
+    if (OtherArray.IsEmpty())
+    {
+        return; // 추가할 요소가 없으면 바로 반환
+    }
+
+    // 필요한 경우 메모리 재할당을 한 번에 하도록 예약
+    Reserve(Num() + OtherArray.Num());
+
+    // std::vector의 insert 기능을 사용하여 다른 배열의 요소들을 추가
+    ContainerPrivate.insert(
+        ContainerPrivate.end(), // 삽입 위치: 현재 배열의 끝
+        OtherArray.ContainerPrivate.begin(), // 추가할 요소들의 시작 반복자
+        OtherArray.ContainerPrivate.end()    // 추가할 요소들의 끝 반복자
+    );
+}
+
+template <typename T, typename Allocator>
+void TArray<T, Allocator>::Append(const T* Ptr, SizeType Count)
+{
+    if (Ptr == nullptr || Count <= 0)
+    {
+        return; // 유효하지 않은 입력이면 반환
+    }
+
+    // 필요한 경우 메모리 재할당을 한 번에 하도록 예약
+    Reserve(Num() + Count);
+
+    // std::vector의 insert 기능을 사용하여 C-스타일 배열의 요소들을 추가
+    ContainerPrivate.insert(
+        ContainerPrivate.end(), // 삽입 위치: 현재 배열의 끝
+        Ptr,                    // 추가할 요소들의 시작 포인터
+        Ptr + Count             // 추가할 요소들의 끝 포인터 (주의: Count가 SizeType이므로 포인터 연산 주의)
+                                // 만약 SizeType이 int32이고 포인터 차이가 size_t를 넘을 수 있다면 문제 소지
+                                // 여기서는 Count가 합리적인 범위 내라고 가정
+    );
+}
+
+template <typename T, typename Allocator>
+void TArray<T, Allocator>::Append(const std::vector<T>& OtherVector)
+{
+    if (OtherVector.empty())
+    {
+        return; // 추가할 요소가 없으면 바로 반환
+    }
+
+    // 필요한 경우 메모리 재할당을 한 번에 하도록 예약
+    Reserve(Num() + static_cast<SizeType>(OtherVector.size())); // size_t -> SizeType 캐스팅
+
+    // std::vector의 insert 기능을 사용하여 다른 벡터의 요소들을 추가
+    ContainerPrivate.insert(
+        ContainerPrivate.end(), // 삽입 위치: 현재 배열의 끝
+        OtherVector.begin(),    // 추가할 요소들의 시작 반복자
+        OtherVector.end()       // 추가할 요소들의 끝 반복자
+    );
+}
+
 
 template <typename ElementType, typename Allocator>
 FArchive& operator<<(FArchive& Ar, TArray<ElementType, Allocator>& Array)

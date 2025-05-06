@@ -543,7 +543,7 @@ bool FObjLoader::CreateTextureFromFile(const FWString& Filename, bool bIsSRGB)
         return true;
     }
 
-    HRESULT hr = FEngineLoop::ResourceManager.LoadTextureFromFile(FEngineLoop::GraphicDevice.Device, Filename.c_str(), bIsSRGB);
+    HRESULT hr = FEngineLoop::ResourceManager.LoadTextureFromFile(&FEngineLoop::GraphicDevice, Filename.c_str(), bIsSRGB);
 
     if (FAILED(hr))
     {
@@ -879,7 +879,7 @@ bool FObjManager::LoadStaticMeshFromBinary(const FWString& FilePath, FStaticMesh
         {
             if (FEngineLoop::ResourceManager.GetTexture(Texture.Key) == nullptr)
             {
-                FEngineLoop::ResourceManager.LoadTextureFromFile(FEngineLoop::GraphicDevice.Device, Texture.Key.c_str(), Texture.Value);
+                FEngineLoop::ResourceManager.LoadTextureFromFile(&FEngineLoop::GraphicDevice, Texture.Key.c_str(), Texture.Value);
             }
         }
     }

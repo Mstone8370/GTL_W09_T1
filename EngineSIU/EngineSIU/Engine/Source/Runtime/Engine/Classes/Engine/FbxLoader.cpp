@@ -663,6 +663,31 @@ void FFbxLoader::ProcessMesh(FbxNode* Node, FSkeletalMeshRenderData& OutRenderDa
         return;
     }
 
+    // TMap<FbxSurfaceMaterial*, int32> MaterialPtrToIndexMap;
+    // if (!ProcessMaterials(Node, OutRenderData, MaterialPtrToIndexMap)) // ProcessMaterials 구현 필요
+    // {
+    //     OutputDebugStringA(std::format("Error: Failed to process materials for node '{}'.\n", Node->GetName()).c_str());
+    //     return;
+    // }
+
+    
+    ProcessMatreiral(Node, OutRenderData);
+
+    // --- 재질 정보 가져오기 ---
+    const int32 MaterialCount = Node->GetMaterialCount() > 0 ? Node->GetMaterialCount() : 1; // 재질 없으면 1개(기본)로 간주
+    FbxLayerElementMaterial* MaterialElement = Mesh->GetLayer(0) ? Mesh->GetLayer(0)->GetMaterials() : nullptr;
+    if (!MaterialElement)
+    {
+        OutputDebugStringA(std::format("Warning: Mesh '{}' has no material layer element. Assigning all to material 0.\n", Node->GetName()).c_str());
+        // 재질 요소 없으면 모든 폴리곤을 0번 재질로 처리
+    }
+
+    // --- 임시 인덱스 버퍼 준비 (재질별) ---
+    TArray<TArray<uint32>> TempIndicesPerMaterial;
+    TempIndicesPerMaterial.SetNum(MaterialCount); // 노드의 재질 개수만큼 리스트 생성
+
+    
+
     const FbxAMatrix LocalTransformMatrix = Node->EvaluateLocalTransform();
 
     // 정점 데이터 추출 및 병합
@@ -697,30 +722,41 @@ void FFbxLoader::ProcessMesh(FbxNode* Node, FSkeletalMeshRenderData& OutRenderDa
         OutputDebugStringA(std::format("Error: Failed to fill skin weight map for mesh '{}'.\n", NodeNameAnsi).c_str());
         // return; // 또는 다른 오류 처리
     }
-    /*
-    for (int32 DeformerIdx = 0; DeformerIdx < Mesh->GetDeformerCount(FbxDeformer::eSkin); ++DeformerIdx)
-    {
-        FbxSkin* Skin = static_cast<FbxSkin*>(Mesh->GetDeformer(DeformerIdx, FbxDeformer::eSkin));
-        for (int32 ClusterIdx = 0; ClusterIdx < Skin->GetClusterCount(); ++ClusterIdx)
-        {
-            FbxCluster* Cluster = Skin->GetCluster(ClusterIdx);
-            int32 BoneIndex = 본 인덱스 테이블에서 Cl->GetLink() 찾기;
-            auto const* CPoints = Cluster->GetControlPointIndices();
-            auto const* Weights = Cluster->GetControlPointWeights();
-            for (int ControlPointIdx = 0; ControlPointIdx < Cluster->GetControlPointIndicesCount(); ++ControlPointIdx)
-            {
-                SkinWeightMap[CPoints[ControlPointIdx]].Emplace(BoneIndex, Weights[ControlPointIdx]);
-            }
-        }
-    }
-*/
+
 
     int VertexCounter = 0; // 폴리곤 정점 인덱스 (eByPolygonVertex 모드용)
 
     // 폴리곤(삼각형) 순회
     for (int32 i = 0; i < PolygonCount; ++i)
     {
+        // --- 현재 폴리곤의 재질 ID 결정 ---
+        int32 MaterialId = 0; // 기본값
+        if (MaterialElement)
+        {
+            // 매핑 모드에 따라 재질 ID 가져오기
+            switch (MaterialElement->GetMappingMode())
+            {
+            case FbxLayerElement::eByPolygon: // 폴리곤별 할당
+                MaterialId = MaterialElement->GetIndexArray().GetAt(i);
+                break;
+            case FbxLayerElement::eAllSame: // 모든 폴리곤이 동일 재질
+                MaterialId = MaterialElement->GetIndexArray().GetAt(0);
+                break;
+            default:
+                // 지원하지 않는 모드 또는 오류
+                    OutputDebugStringA(std::format("Warning: Unsupported material mapping mode ({}) for mesh '{}'. Using material 0.\n", (int)MaterialElement->GetMappingMode(), Node->GetName()).c_str());
+                break;
+            }
+        }
+        // MaterialId 유효성 검사 (MaterialCount 범위 내인지)
+        if (MaterialId < 0 || MaterialId >= MaterialCount)
+        {
+            OutputDebugStringA(std::format("Warning: Invalid MaterialId ({}) found for polygon {}. Clamping to 0.\n", MaterialId, i).c_str());
+            MaterialId = 0; // 범위를 벗어나면 0번 재질로 강제 지정
+        }
+
         // 각 폴리곤(삼각형)의 정점 3개 순회
+        uint32 TriangleIndices[3]; // 현재 삼각형의 최종 정점 인덱스 저장용
         for (int32 j = 0; j < 3; ++j)
         {
             const int32 ControlPointIndex = Mesh->GetPolygonVertex(i, j);
@@ -740,9 +776,11 @@ void FFbxLoader::ProcessMesh(FbxNode* Node, FSkeletalMeshRenderData& OutRenderDa
             FVertexKey Key(ControlPointIndex, NormalIndex, TangentIndex, UVIndex, ColorIndex);
 
             // 맵에서 키 검색
+            uint32 FinalVertexIndex;
             if (const uint32* Found = UniqueVertices.Find(Key))
             {
-                OutRenderData.Indices.Add(*Found);
+                //OutRenderData.Indices.Add(*Found);
+                FinalVertexIndex = *Found;
             }
             else
             {
@@ -806,26 +844,54 @@ void FFbxLoader::ProcessMesh(FbxNode* Node, FSkeletalMeshRenderData& OutRenderDa
 
                 // 새로운 정점을 Vertices 배열에 추가
                 OutRenderData.Vertices.Add(NewVertex);
-                // 새 정점의 인덱스 계산
-                uint32 NewIndex = static_cast<uint32>(OutRenderData.Vertices.Num() - 1);
-                // 인덱스 버퍼에 새 인덱스 추가
-                OutRenderData.Indices.Add(NewIndex);
-                // 맵에 새 정점 정보 추가
-                UniqueVertices.Add(Key, NewIndex);
+                FinalVertexIndex = static_cast<uint32>(OutRenderData.Vertices.Num() - 1);
+                UniqueVertices.Add(Key, FinalVertexIndex);
+                
             }
+            TriangleIndices[j] = FinalVertexIndex; // 삼각형 구성 인덱스 저장
 
             VertexCounter++; // 다음 폴리곤 정점으로 이동
         } // End for each vertex in polygon
+
+        TempIndicesPerMaterial[MaterialId].Add(TriangleIndices[0]);
+        TempIndicesPerMaterial[MaterialId].Add(TriangleIndices[1]);
+        TempIndicesPerMaterial[MaterialId].Add(TriangleIndices[2]);
     } // End for each polygon
 
+    // --- 최종 인덱스 버퍼 및 서브셋 정보 생성 ---
+    OutRenderData.Indices.Empty(); // 최종 인덱스 버퍼 초기화
+    OutRenderData.MaterialSubsets.Empty(); // 서브셋 정보 초기화
+    uint32 CurrentIndexStart = 0;
 
-    SetFbxMatreiral(Node, OutRenderData);
+    for (int32 MatId = 0; MatId < MaterialCount; ++MatId)
+    {
+        const TArray<uint32>& IndicesForMaterial = TempIndicesPerMaterial[MatId];
+        if (IndicesForMaterial.Num() > 0) // 해당 재질을 사용하는 인덱스가 있을 경우
+        {
+            FMaterialSubset Subset;
+            Subset.MaterialIndex = MatId;
+            Subset.IndexStart = CurrentIndexStart;
+            Subset.IndexCount = IndicesForMaterial.Num();
+            Subset.MaterialName = OutRenderData.Materials[MatId].MaterialName; // 필요시 이름 설정
+
+            // 최종 인덱스 버퍼에 현재 재질의 인덱스들 추가
+            OutRenderData.Indices.Append(IndicesForMaterial);
+
+            // 서브셋 정보 추가-
+            OutRenderData.MaterialSubsets.Add(Subset);
+
+            // 다음 서브셋의 시작 위치 업데이트
+            CurrentIndexStart += Subset.IndexCount;
+        }
+    }
 }
 
 
-void FFbxLoader::SetFbxMatreiral(FbxNode* _Node, FSkeletalMeshRenderData& OutRenderData)
+void FFbxLoader::ProcessMatreiral(FbxNode* _Node, FSkeletalMeshRenderData& OutRenderData)
 {
     int MtrlCount = _Node->GetMaterialCount();
+    OutRenderData.Materials.Empty(); // 시작 시 재질 목록 초기화
+    OutRenderData.Materials.Reserve(MtrlCount); // 미리 공간 확보
 
     if (MtrlCount > 0)
     {
@@ -835,9 +901,31 @@ void FFbxLoader::SetFbxMatreiral(FbxNode* _Node, FSkeletalMeshRenderData& OutRen
         {
             FbxSurfaceMaterial* pMtrl = _Node->GetMaterial(MtrlIndex);
 
+            if (!pMtrl)
+            {
+                
+                // 유효하지 않은 재질 슬롯 처리 (기본 재질 추가 또는 경고)
+                FObjMaterialInfo DefaultMaterialInfo;
+                DefaultMaterialInfo.MaterialName = FString::Printf(TEXT("DefaultMaterial_%d"), MtrlIndex);
+                // 기본값 설정...
+                OutRenderData.Materials.Add(DefaultMaterialInfo); // 빈 슬롯이라도 채워 인덱스 유지
+                OutputDebugStringA(std::format("Warning: Material at index {} for node '{}' is null. Added default.\n", MtrlIndex, (*FString(_Node->GetName()))).c_str());
+                continue;
+            }
+
             FObjMaterialInfo MatrialInfo;
 
-            MatrialInfo.MaterialName = pMtrl->GetName();
+            constexpr uint32 TexturesNum = static_cast<uint32>(EMaterialTextureSlots::MTS_MAX);
+            MatrialInfo.TextureInfos.SetNum(TexturesNum);
+
+            const char* MtrlNameAnsi = pMtrl->GetName();
+            if (MtrlNameAnsi && MtrlNameAnsi[0] != '\0') {
+                MatrialInfo.MaterialName = FString((MtrlNameAnsi));
+            } else {
+                // 이름이 없으면 기본 이름 생성 (예: "Material_NodeName_Index")
+                MatrialInfo.MaterialName = FString::Printf(TEXT("Material_%s_%d"), *FString((_Node->GetName())), MtrlIndex);
+            }
+
             //MatrialInfo.DifTexturePath = pMtrl->FindProperty(FbxSurfaceMaterial::sDiffuse)->GetSrcObject<FbxFileTexture>();
 
             MatrialInfo.DiffuseColor = GetMaterialColor(pMtrl, FbxSurfaceMaterial::sDiffuse, FbxSurfaceMaterial::sDiffuseFactor).ToVector();
@@ -845,15 +933,25 @@ void FFbxLoader::SetFbxMatreiral(FbxNode* _Node, FSkeletalMeshRenderData& OutRen
             MatrialInfo.SpecularColor = GetMaterialColor(pMtrl, FbxSurfaceMaterial::sSpecular, FbxSurfaceMaterial::sSpecularFactor).ToVector();
             MatrialInfo.EmissiveColor = GetMaterialColor(pMtrl, FbxSurfaceMaterial::sEmissive, FbxSurfaceMaterial::sEmissiveFactor).ToVector();
             
-            SetMatrialTexture(pMtrl, FbxSurfaceMaterial::sDiffuse, EMaterialTextureSlots::MTS_Diffuse, MatrialInfo);
-            SetMatrialTexture(pMtrl, FbxSurfaceMaterial::sNormalMap, EMaterialTextureSlots::MTS_Normal, MatrialInfo);
-            SetMatrialTexture(pMtrl, FbxSurfaceMaterial::sSpecular, EMaterialTextureSlots::MTS_Specular, MatrialInfo);
+            SetMaterialTexture(pMtrl, FbxSurfaceMaterial::sDiffuse, EMaterialTextureSlots::MTS_Diffuse, MatrialInfo);
+            SetMaterialTexture(pMtrl, FbxSurfaceMaterial::sNormalMap, EMaterialTextureSlots::MTS_Normal, MatrialInfo);
+            SetMaterialTexture(pMtrl, FbxSurfaceMaterial::sSpecular, EMaterialTextureSlots::MTS_Specular, MatrialInfo);
 
             //FWString SpecularTexturePath = GetMaterialTexturePath(pMtrl, FbxSurfaceMaterial::sSpecular);
             //FWString NormalTexturePath = GetMaterialTexturePath(pMtrl, FbxSurfaceMaterial::sNormalMap);
             //FWString BumpTexturePath = GetMaterialTexturePath(pMtrl, FbxSurfaceMaterial::sBump);
-            
+
+            OutRenderData.Materials.Add(MatrialInfo);
         }
+    }
+    else
+    {
+        // 재질이 하나도 없는 경우, 기본 재질 하나 추가 (선택 사항)
+        FObjMaterialInfo DefaultMaterialInfo;
+        DefaultMaterialInfo.MaterialName = TEXT("DefaultMaterial");
+        // 기본값 설정...
+        OutRenderData.Materials.Add(DefaultMaterialInfo);
+        OutputDebugStringA(std::format("Info: Node '{}' has no materials. Added one default material.\n", (*FString(_Node->GetName()))).c_str());
     }
 }
 
@@ -964,6 +1062,7 @@ FWString FFbxLoader::GetMaterialTexturePath(FbxSurfaceMaterial* Mtrl, const char
             if (nullptr != FileTex)
             {
                 const char* src = FileTex->GetFileName();
+                const char* src2 = FileTex->GetRelativeFileName();
                 Str = std::wstring(src, src + std::strlen(src));
             }
         }
@@ -981,7 +1080,7 @@ FWString FFbxLoader::GetMaterialTexturePath(FbxSurfaceMaterial* Mtrl, const char
 }
 
 
-void FFbxLoader::SetMatrialTexture(FbxSurfaceMaterial* Mtrl, const char* InTexturePath, EMaterialTextureSlots InSlotIdx,
+void FFbxLoader::SetMaterialTexture(FbxSurfaceMaterial* Mtrl, const char* InTexturePath, EMaterialTextureSlots InSlotIdx,
     FObjMaterialInfo& OutFObjMaterialInfo)
 {
     FWString TexturePath = GetMaterialTexturePath(Mtrl, InTexturePath);

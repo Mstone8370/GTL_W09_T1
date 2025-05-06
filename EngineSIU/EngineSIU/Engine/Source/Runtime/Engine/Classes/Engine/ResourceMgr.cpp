@@ -7,6 +7,7 @@
 #include "D3D11RHI/GraphicDevice.h"
 #include "DirectXTK/DDSTextureLoader.h"
 #include "Engine/FObjLoader.h"
+#include "Misc/Paths.h"
 
 
 void FResourceMgr::Initialize(FRenderer* renderer, FGraphicsDevice* device)
@@ -27,21 +28,21 @@ void FResourceMgr::Initialize(FRenderer* renderer, FGraphicsDevice* device)
     LoadTextureFromDDS(device->Device, device->DeviceContext, L"Assets/Texture/font.dds");
     LoadTextureFromDDS(device->Device, device->DeviceContext, L"Assets/Texture/UUID_Font.dds");
 
-    LoadTextureFromFile(device->Device, L"Assets/Texture/ocean_sky.jpg");
-    LoadTextureFromFile(device->Device, L"Assets/Texture/font.png");
-    LoadTextureFromFile(device->Device, L"Assets/Texture/emart.png");
-    LoadTextureFromFile(device->Device, L"Assets/Texture/T_Explosion_SubUV.png");
-    LoadTextureFromFile(device->Device, L"Assets/Texture/UUID_Font.png");
-    LoadTextureFromFile(device->Device, L"Assets/Texture/Wooden Crate_Crate_BaseColor.png");
-    LoadTextureFromFile(device->Device, L"Assets/Texture/spotLight.png");
+    LoadTextureFromFile(device, L"Assets/Texture/ocean_sky.jpg");
+    LoadTextureFromFile(device, L"Assets/Texture/font.png");
+    LoadTextureFromFile(device, L"Assets/Texture/emart.png");
+    LoadTextureFromFile(device, L"Assets/Texture/T_Explosion_SubUV.png");
+    LoadTextureFromFile(device, L"Assets/Texture/UUID_Font.png");
+    LoadTextureFromFile(device, L"Assets/Texture/Wooden Crate_Crate_BaseColor.png");
+    LoadTextureFromFile(device, L"Assets/Texture/spotLight.png");
 
-    LoadTextureFromFile(device->Device, L"Assets/Editor/Icon/S_Actor.PNG");
-    LoadTextureFromFile(device->Device, L"Assets/Editor/Icon/S_LightSpot.PNG");
-    LoadTextureFromFile(device->Device, L"Assets/Editor/Icon/S_LightPoint.PNG");
-    LoadTextureFromFile(device->Device, L"Assets/Editor/Icon/S_LightDirectional.PNG");
-    LoadTextureFromFile(device->Device, L"Assets/Editor/Icon/S_ExpoHeightFog.PNG");
-    LoadTextureFromFile(device->Device, L"Assets/Editor/Icon/S_AtmosphericHeightFog.PNG");
-    LoadTextureFromFile(device->Device, L"Assets/Editor/Icon/AmbientLight_64x.png");
+    LoadTextureFromFile(device, L"Assets/Editor/Icon/S_Actor.PNG");
+    LoadTextureFromFile(device, L"Assets/Editor/Icon/S_LightSpot.PNG");
+    LoadTextureFromFile(device, L"Assets/Editor/Icon/S_LightPoint.PNG");
+    LoadTextureFromFile(device, L"Assets/Editor/Icon/S_LightDirectional.PNG");
+    LoadTextureFromFile(device, L"Assets/Editor/Icon/S_ExpoHeightFog.PNG");
+    LoadTextureFromFile(device, L"Assets/Editor/Icon/S_AtmosphericHeightFog.PNG");
+    LoadTextureFromFile(device, L"Assets/Editor/Icon/AmbientLight_64x.png");
 
 }
 
@@ -79,8 +80,15 @@ std::shared_ptr<FTexture> FResourceMgr::GetTexture(const FWString& name) const
     return TempValue ? *TempValue : nullptr;
 }
 
-HRESULT FResourceMgr::LoadTextureFromFile(ID3D11Device* device, const wchar_t* filename, bool bIsSRGB)
+HRESULT FResourceMgr::LoadTextureFromFile(FGraphicsDevice* GraphicsDevice, const wchar_t* filename, bool bIsSRGB)
 {
+    if (FPaths::HasExtension(filename, L"dds"))
+    {
+        return LoadTextureFromDDS(GraphicsDevice->Device, GraphicsDevice->DeviceContext, filename);
+    }
+
+    ID3D11Device* device = GraphicsDevice->Device;
+    
     IWICImagingFactory* wicFactory = nullptr;
     IWICBitmapDecoder* decoder = nullptr;
     IWICBitmapFrameDecode* frame = nullptr;

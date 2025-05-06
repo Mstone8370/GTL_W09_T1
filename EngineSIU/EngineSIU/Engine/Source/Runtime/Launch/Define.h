@@ -124,7 +124,7 @@ struct FObjMaterialInfo
     float Roughness = 0.5f;                                        // Pr: Roughness
     
     /* Texture */
-    TArray<FTextureInfo> TextureInfos;
+    TArray<FTextureInfo> TextureInfos;          //EMaterialTextureSlots 와 순서가 동일해야함
 };
 
 struct FVertexTexture

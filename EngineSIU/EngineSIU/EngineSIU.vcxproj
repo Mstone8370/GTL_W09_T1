@@ -250,6 +250,7 @@ xcopy /y /d "$(SolutionDir)$(ProjectName)\Engine\Source\ThirdParty\FBX\lib\x64\$
     <ClCompile Include="Engine\Source\Runtime\Core\Math\Vector.cpp" />
     <ClCompile Include="Engine\Source\Runtime\Core\Math\Vector4.cpp" />
     <ClCompile Include="Engine\Source\Runtime\Core\Misc\Parse.cpp" />
+    <ClCompile Include="Engine\Source\Runtime\Core\Misc\Paths.cpp" />
     <ClCompile Include="Engine\Source\Runtime\Core\Serialization\Archive.cpp" />
     <ClCompile Include="Engine\Source\Runtime\Core\Serialization\MemoryArchive.cpp" />
     <ClCompile Include="Engine\Source\Runtime\Core\Stats\GPUTimingManager.cpp" />
@@ -539,6 +540,7 @@ xcopy /y /d "$(SolutionDir)$(ProjectName)\Engine\Source\ThirdParty\FBX\lib\x64\$
     <ClInclude Include="Engine\Source\Runtime\Core\Misc\Char.h" />
     <ClInclude Include="Engine\Source\Runtime\Core\Misc\CoreMiscDefines.h" />
     <ClInclude Include="Engine\Source\Runtime\Core\Misc\Parse.h" />
+    <ClInclude Include="Engine\Source\Runtime\Core\Misc\Paths.h" />
     <ClInclude Include="Engine\Source\Runtime\Core\Serialization\Archive.h" />
     <ClInclude Include="Engine\Source\Runtime\Core\Serialization\MemoryArchive.h" />
     <ClInclude Include="Engine\Source\Runtime\Core\Stats\GPUTimingManager.h" />

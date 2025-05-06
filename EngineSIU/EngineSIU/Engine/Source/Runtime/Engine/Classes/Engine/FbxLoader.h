@@ -77,7 +77,8 @@ private:
 
     void TraverseNodeRecursive(FbxNode* Node, FSkeletalMeshRenderData& OutRenderData);
     void ProcessMesh(FbxNode* Node, FSkeletalMeshRenderData& OutRenderData);
-    void SetFbxMatreiral(FbxNode* Node, FSkeletalMeshRenderData& OutRenderData);
+
+    void ProcessMatreiral(FbxNode* Node, FSkeletalMeshRenderData& OutRenderData);
     bool FBXConvertScene();
     
 
@@ -85,7 +86,7 @@ private:
     float GetMaterialFactor(FbxSurfaceMaterial* Mtrl, const char* FactorName);
     FWString GetMaterialTexturePath(FbxSurfaceMaterial* Mtrl, const char* TextureName);
 
-    void SetMatrialTexture(FbxSurfaceMaterial* Mtrl, const char* InTexturePath, EMaterialTextureSlots SlotIdx, FObjMaterialInfo& OutFObjMaterialInfo);
+    void SetMaterialTexture(FbxSurfaceMaterial* Mtrl, const char* InTexturePath, EMaterialTextureSlots SlotIdx, FObjMaterialInfo& OutFObjMaterialInfo);
 
     
 };
