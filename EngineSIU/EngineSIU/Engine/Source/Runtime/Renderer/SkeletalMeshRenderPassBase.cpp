@@ -98,31 +98,32 @@ void FSkeletalMeshRenderPassBase::PrepareRenderArr()
 
 
         // 2. 전역 뼈 변환 계산 (컴포넌트 공간 기준)
-        TArray<FMatrix> GlobalBoneMatrices;
-        GlobalBoneMatrices.SetNum(RenderData->SkeletonBones.Num());
+        const int32 BoneNum = RenderData->SkeletonBones.Num();
+        TArray<FMatrix> CurrentGlobalBoneMatrices;
+        CurrentGlobalBoneMatrices.SetNum(BoneNum);
 
-        for (int32 BoneIndex = 0; BoneIndex < RenderData->SkeletonBones.Num(); ++BoneIndex)
+        for (int32 BoneIndex = 0; BoneIndex < BoneNum; ++BoneIndex)
         {
             const FBoneInfo& BoneInfo = RenderData->SkeletonBones[BoneIndex];
-            const FTransform& LocalTransform = CurrentLocalTransforms[BoneIndex];
-            FMatrix LocalMatrix = LocalTransform.ToMatrixWithScale(); // FTransform -> FMatrix
+            const FTransform& CurrentLocalTransform = CurrentLocalTransforms[BoneIndex];
+            FMatrix LocalMatrix = CurrentLocalTransform.ToMatrixWithScale(); // FTransform -> FMatrix
 
             if (BoneInfo.ParentIndex == INDEX_NONE) // 루트 뼈
             {
-                GlobalBoneMatrices[BoneIndex] = LocalMatrix;
+                CurrentGlobalBoneMatrices[BoneIndex] = LocalMatrix;
             }
             else
             {
                 // 부모 인덱스 유효성 검사
                 if (BoneInfo.ParentIndex >= 0 && BoneInfo.ParentIndex < BoneIndex) // 부모는 항상 현재 인덱스보다 앞에 있어야 함
                 {
-                    GlobalBoneMatrices[BoneIndex] = LocalMatrix * GlobalBoneMatrices[BoneInfo.ParentIndex];
+                    CurrentGlobalBoneMatrices[BoneIndex] = LocalMatrix * CurrentGlobalBoneMatrices[BoneInfo.ParentIndex];
                 }
                 else
                 {
                     // 잘못된 부모 인덱스 또는 순서 오류
                     OutputDebugStringA(std::format("Error: Invalid parent index ({}) for bone '{}' (index {}).\n", BoneInfo.ParentIndex, (*BoneInfo.Name), BoneIndex).c_str());
-                    GlobalBoneMatrices[BoneIndex] = LocalMatrix; // 오류 시 로컬 행렬 사용 (임시방편)
+                    CurrentGlobalBoneMatrices[BoneIndex] = LocalMatrix; // 오류 시 로컬 행렬 사용 (임시방편)
                 }
             }
         }
@@ -133,13 +134,13 @@ void FSkeletalMeshRenderPassBase::PrepareRenderArr()
         for (int32 BoneIndex = 0; BoneIndex < RenderData->SkeletonBones.Num(); ++BoneIndex)
         {
             // 역 바인드 포즈 행렬 유효성 검사
-            if (BoneIndex >= RenderData->InverseBindPoseMatrices.Num()) {
+            if (BoneIndex >= RenderData->InverseGlobalBindPoseMatrices.Num()) {
                  OutputDebugStringA(std::format("Error: Missing inverse bind pose matrix for bone index {}.\n", BoneIndex).c_str());
                  SkinningMatrices[BoneIndex] = FMatrix::Identity; // 오류 시 항등 행렬
                  continue;
             }
             // 스키닝 행렬 = 전역 뼈 변환 * 역 바인드 포즈 변환
-            SkinningMatrices[BoneIndex] = RenderData->InverseBindPoseMatrices[BoneIndex] * GlobalBoneMatrices[BoneIndex];
+            SkinningMatrices[BoneIndex] = RenderData->InverseGlobalBindPoseMatrices[BoneIndex] * CurrentGlobalBoneMatrices[BoneIndex];
             // 주의: 곱셈 순서 확인 필요. UE는 보통 MatrixA * MatrixB = A를 먼저 적용.
             // 스키닝 공식: FinalPos = sum( weight * (VertexPos * InvBindPose * GlobalBone) )
             // 따라서 SkinningMatrix = InvBindPose * GlobalBone 이 맞음.

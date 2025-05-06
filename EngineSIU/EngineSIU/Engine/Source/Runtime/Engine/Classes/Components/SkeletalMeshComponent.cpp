@@ -16,9 +16,9 @@ bool USkeletalMeshComponent::GetCurrentLocalBoneTransforms(TArray<FTransform>& O
             // 임시: T포즈만 구현
             const struct FSkeletalMeshRenderData* RenderData = SkeletalMesh->GetRenderData();
             if(RenderData) {
-                OutLocalTransforms.SetNum(RenderData->ReferenceLocalTransforms.Num());
-                for (int32 i = 0; i < RenderData->ReferenceLocalTransforms.Num(); ++i) {
-                    OutLocalTransforms[i] = RenderData->ReferenceLocalTransforms[i];
+                OutLocalTransforms.SetNum(RenderData->LocalBindPoseTransforms.Num());
+                for (int32 i = 0; i < RenderData->LocalBindPoseTransforms.Num(); ++i) {
+                    OutLocalTransforms[i] = RenderData->LocalBindPoseTransforms[i];
                 }
                 return true;
 

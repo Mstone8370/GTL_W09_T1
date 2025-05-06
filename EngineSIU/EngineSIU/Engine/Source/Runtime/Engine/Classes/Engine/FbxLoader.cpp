@@ -318,7 +318,7 @@ bool FFbxLoader::ProcessSkeleton(FSkeletalMeshRenderData& OutRenderData)
 {
     // 이전 스켈레톤 데이터가 있다면 비움
     OutRenderData.SkeletonBones.Empty();
-    OutRenderData.InverseBindPoseMatrices.Empty();
+    OutRenderData.InverseGlobalBindPoseMatrices.Empty();
     OutRenderData.BoneNodeToIndexMap.Empty();
 
     // 1. Bind Pose 찾기
@@ -375,8 +375,8 @@ bool FFbxLoader::ProcessSkeleton(FSkeletalMeshRenderData& OutRenderData)
         return false; // 스켈레톤이 처리되지 않았음을 나타냄
     }
 
-    // InverseBindPoseMatrices 배열 크기가 본 개수와 일치하는지 확인
-    if (OutRenderData.SkeletonBones.Num() != OutRenderData.InverseBindPoseMatrices.Num())
+    // InverseGlobalBindPoseMatrices 배열 크기가 본 개수와 일치하는지 확인
+    if (OutRenderData.SkeletonBones.Num() != OutRenderData.InverseGlobalBindPoseMatrices.Num())
     {
         OutputDebugStringA("오류: 본 개수와 역 바인드 포즈 행렬 개수가 일치하지 않습니다.\n");
         // CollectBoneRecursive 중 오류가 발생했음을 나타냄
@@ -584,16 +584,16 @@ void FFbxLoader::CollectBoneRecursive(
 
         // 특정 인덱스에 추가하기 전에 배열이 충분히 큰지 확인
         // (CurrentBoneIndex = Num()이므로 항상 참이어야 함)
-        if (OutRenderData.InverseBindPoseMatrices.Num() == CurrentBoneIndex)
+        if (OutRenderData.InverseGlobalBindPoseMatrices.Num() == CurrentBoneIndex)
         {
-             OutRenderData.InverseBindPoseMatrices.Add(UeInverseBindMatrix);
+             OutRenderData.InverseGlobalBindPoseMatrices.Add(UeInverseBindMatrix);
         }
         else
         {
             // 이 경우는 인덱스 할당 로직 오류를 나타냄
              OutputDebugStringA(std::format("오류: 본 '{}'에 대한 역 바인드 포즈 행렬 추가 시 인덱스 불일치.\n", CurrentNode->GetName()).c_str());
              // 오류 처리: 크기 조정/신중하게 삽입 또는 assert
-             OutRenderData.InverseBindPoseMatrices[CurrentBoneIndex] = (UeInverseBindMatrix); // 덜 효율적
+             OutRenderData.InverseGlobalBindPoseMatrices[CurrentBoneIndex] = (UeInverseBindMatrix); // 덜 효율적
         }
 
         // 참조 포즈 로컬 변환 계산
@@ -601,9 +601,9 @@ void FFbxLoader::CollectBoneRecursive(
         if (ParentBoneIndex != INDEX_NONE)
         {
             // 부모의 바인드 포즈 전역 행렬 가져오기 (주의: InverseBindPoseMatrices는 역행렬임)
-            if (ParentBoneIndex < OutRenderData.InverseBindPoseMatrices.Num())
+            if (ParentBoneIndex < OutRenderData.InverseGlobalBindPoseMatrices.Num())
             {
-                FMatrix ParentRefGlobalMatrix = OutRenderData.InverseBindPoseMatrices[ParentBoneIndex].Inverse(); // 역행렬의 역행렬 = 원본
+                FMatrix ParentRefGlobalMatrix = OutRenderData.InverseGlobalBindPoseMatrices[ParentBoneIndex].Inverse(); // 역행렬의 역행렬 = 원본
                 FMatrix CurrentRefGlobalMatrix = ConvertMatrixUE(BindPoseGlobalMatrix); // FbxPose 또는 Cluster에서 얻은 행렬
 
                 // 로컬 행렬 계산: Local = inv(ParentGlobal) * Global
@@ -624,14 +624,14 @@ void FFbxLoader::CollectBoneRecursive(
         }
 
         // 계산된 참조 로컬 변환 저장 (배열 크기 관리 주의)
-        if (OutRenderData.ReferenceLocalTransforms.Num() == CurrentBoneIndex)
+        if (OutRenderData.LocalBindPoseTransforms.Num() == CurrentBoneIndex)
         {
-            OutRenderData.ReferenceLocalTransforms.Add(RefLocalTransform);
+            OutRenderData.LocalBindPoseTransforms.Add(RefLocalTransform);
         }
         else
         {
             // 인덱스 오류 처리
-            OutRenderData.ReferenceLocalTransforms[CurrentBoneIndex] = (RefLocalTransform);
+            OutRenderData.LocalBindPoseTransforms[CurrentBoneIndex] = (RefLocalTransform);
         }
 
 

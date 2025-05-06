@@ -43,7 +43,7 @@ struct FSkeletalMeshRenderData
     TMap<class FbxNode*, int32> BoneNodeToIndexMap; // 파싱 이후에는 필요없음 빼야됨
     
     TArray<FBoneInfo> SkeletonBones;
-    TArray<FMatrix> InverseBindPoseMatrices;
+    TArray<FMatrix> InverseGlobalBindPoseMatrices;
     // 각 뼈의 참조 포즈(바인드 포즈) 로컬 변환 저장
-    TArray<FTransform> ReferenceLocalTransforms;
+    TArray<FTransform> LocalBindPoseTransforms;
 };
