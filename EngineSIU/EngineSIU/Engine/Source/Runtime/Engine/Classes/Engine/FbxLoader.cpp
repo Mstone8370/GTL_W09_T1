@@ -213,14 +213,16 @@ bool FFbxLoader::LoadFBX(const FString& InFilePath, FSkeletalMeshRenderData& Out
         return false;
     }
 
-    // Step 1: 좌표계 변환 (Unreal 기준 - Z Up, Left-Handed)
-    const FbxAxisSystem UnrealAxisSystem(FbxAxisSystem::eZAxis, FbxAxisSystem::eParityOdd, FbxAxisSystem::eLeftHanded);
-    UnrealAxisSystem.ConvertScene(Scene); // 좌표계 변환 적용
+    //// Step 1: 좌표계 변환 (Unreal 기준 - Z Up, Left-Handed)
+    //const FbxAxisSystem UnrealAxisSystem(FbxAxisSystem::eZAxis, FbxAxisSystem::eParityOdd, FbxAxisSystem::eLeftHanded);
+    //UnrealAxisSystem.ConvertScene(Scene); // 좌표계 변환 적용
 
-    // Step 2: 단위 변환 (Unreal 기준 - cm 단위)
-    const FbxSystemUnit UnrealUnit(FbxSystemUnit::cm);
-    UnrealUnit.ConvertScene(Scene); // 단위 보정 (1.0f == 1cm)
+    //// Step 2: 단위 변환 (Unreal 기준 - cm 단위)
+    //const FbxSystemUnit UnrealUnit(FbxSystemUnit::cm);
+    //UnrealUnit.ConvertScene(Scene); // 단위 보정 (1.0f == 1cm)
 
+    FBXConvertScene();
+    
     // Basic Setup
     OutRenderData.ObjectName = InFilePath.ToWideString();
     OutRenderData.DisplayName = ""; // TODO: temp
@@ -241,12 +243,12 @@ bool FFbxLoader::LoadFBX(const FString& InFilePath, FSkeletalMeshRenderData& Out
     //FbxAxisSystem::Max.ConvertScene(Scene); // 언리얼 엔진 방식 좌표축
     */
 
-    const FbxGlobalSettings& GlobalSettings = Scene->GetGlobalSettings();
-    FbxSystemUnit SystemUnit = GlobalSettings.GetSystemUnit();
-    const double ScaleFactor = SystemUnit.GetScaleFactor();
-    OutputDebugStringA(std::format("### FBX ###\nScene Scale: {} cm\n", ScaleFactor).c_str());
-    FbxSystemUnit Unit = Scene->GetGlobalSettings().GetSystemUnit();
-    double Scale = Unit.GetScaleFactor();
+    //const FbxGlobalSettings& GlobalSettings = Scene->GetGlobalSettings();
+    //FbxSystemUnit SystemUnit = GlobalSettings.GetSystemUnit();
+    //const double ScaleFactor = SystemUnit.GetScaleFactor();
+    //OutputDebugStringA(std::format("### FBX ###\nScene Scale: {} cm\n", ScaleFactor).c_str());
+    //FbxSystemUnit Unit = Scene->GetGlobalSettings().GetSystemUnit();
+    //double Scale = Unit.GetScaleFactor();
 
     if (FbxNode* RootNode = Scene->GetRootNode())
     {
@@ -254,7 +256,10 @@ bool FFbxLoader::LoadFBX(const FString& InFilePath, FSkeletalMeshRenderData& Out
         Converter.Triangulate(Scene, true);
         
         
-
+        OutRenderData.BoneBindPoseTransforms.Empty();
+        OutRenderData.BoneLocalTransforms.Empty();
+        OutRenderData.BoneNames.Empty();
+        OutRenderData.BoneParents.Empty();
         TraverseSkeletonNodeRecursive(RootNode, OutRenderData);
         TraverseMeshNodeRecursive(RootNode, OutRenderData);
     }
@@ -313,6 +318,16 @@ void FFbxLoader::ProcessMesh(FbxNode* Node, FSkeletalMeshRenderData& OutRenderDa
         OutputDebugStringA(std::format("Skipping additional mesh node: {}. Already processed one.\n", Node->GetName()).c_str());
         return;
     }
+
+    //const FbxAMatrix LocalTransformMatrix = Node->EvaluateLocalTransform();
+    //const FbxAMatrix MeshGlobalTransform = Node->EvaluateGlobalTransform();
+   
+    /*FbxVector4 geoT = Node->GetGeometricTranslation(FbxNode::eSourcePivot);
+    FbxVector4 geoR = Node->GetGeometricRotation(FbxNode::eSourcePivot);
+    FbxVector4 geoS = Node->GetGeometricScaling(FbxNode::eSourcePivot);
+    FbxAMatrix GeometryTransform(geoT, geoR, geoS);
+    
+    const FbxAMatrix MeshGlobalTransform = Node->EvaluateGlobalTransform() * GeometryTransform;*/
 
     const FbxAMatrix LocalTransformMatrix = Node->EvaluateLocalTransform();
 
@@ -385,7 +400,7 @@ void FFbxLoader::ProcessMesh(FbxNode* Node, FSkeletalMeshRenderData& OutRenderDa
             }
 
             FbxAMatrix LinkMatrix;
-            Cluster->GetTransformLinkMatrix(LinkMatrix); // 💡 클러스터가 저장한 바인드 포즈
+            Cluster->GetTransformLinkMatrix(LinkMatrix);
 
             FTransform BindTransform;
             BindTransform.Translation = TransformToTranslation(LinkMatrix);
@@ -434,6 +449,7 @@ void FFbxLoader::ProcessMesh(FbxNode* Node, FSkeletalMeshRenderData& OutRenderDa
                 // Position
                 if (ControlPointIndex < ControlPointsCount)
                 {
+                    //Position = LocalTransformMatrix.MultT(Position);
                     Position = LocalTransformMatrix.MultT(Position);
                     SetVertexPosition(NewVertex, Position);
                 }
@@ -441,6 +457,7 @@ void FFbxLoader::ProcessMesh(FbxNode* Node, FSkeletalMeshRenderData& OutRenderDa
                 // Normal
                 if (NormalElement && GetVertexElementData(NormalElement, ControlPointIndex, VertexCounter, Normal))
                 {
+                    //Normal = LocalTransformMatrix.Inverse().Transpose().MultT(Normal);
                     Normal = LocalTransformMatrix.Inverse().Transpose().MultT(Normal);
                     SetVertexNormal(NewVertex, Normal);
                 }
@@ -528,15 +545,17 @@ void FFbxLoader::ProcessSkeleton(FbxNode* Node, FSkeletalMeshRenderData& OutRend
     }
     OutRenderData.BoneParents.Add(ParentIndex);
 
+
+    FbxPose* BindPose = GetValidBindPose(Scene);
     // 로컬 트랜스폼 및 바인드 포즈 저장
-    FbxAMatrix LocalMatrix = Node->EvaluateLocalTransform();
+    /*FbxAMatrix LocalMatrix = Node->EvaluateLocalTransform();
     FTransform LocalTransform;
 
     LocalTransform.Translation = TransformToTranslation(LocalMatrix);
     LocalTransform.Rotation = TransformToRotation(LocalMatrix);
     LocalTransform.Scale3D = TransformToScale(LocalMatrix);
 
-    OutRenderData.BoneLocalTransforms.Add(LocalTransform);
+    OutRenderData.BoneLocalTransforms.Add(LocalTransform);*/
 
    /* FbxAMatrix BindMatrix = Node->EvaluateGlobalTransform();
     FTransform BindTransform;
@@ -545,7 +564,22 @@ void FFbxLoader::ProcessSkeleton(FbxNode* Node, FSkeletalMeshRenderData& OutRend
     BindTransform.Scale3D = TransformToScale(BindMatrix);*/
 
   
-    OutRenderData.BoneBindPoseTransforms.Add(FTransform::Identity());
+    //OutRenderData.BoneBindPoseTransforms.Add(FTransform::Identity);
+
+    //FbxAMatrix BindGlobalMatrix = Node->EvaluateGlobalTransform();
+    FbxVector4 geoT = Node->GetGeometricTranslation(FbxNode::eSourcePivot);
+    FbxVector4 geoR = Node->GetGeometricRotation(FbxNode::eSourcePivot);
+    FbxVector4 geoS = Node->GetGeometricScaling(FbxNode::eSourcePivot);
+    FbxAMatrix GeometryTransform(geoT, geoR, geoS);
+    
+            // 포즈 계산에 반영
+    FbxAMatrix BindGlobal = Node->EvaluateGlobalTransform() * GeometryTransform;
+   
+    FTransform BindTransform;
+    BindTransform.Translation = TransformToTranslation(BindGlobal);
+    BindTransform.Rotation = TransformToRotation(BindGlobal);
+    BindTransform.Scale3D = TransformToScale(BindGlobal);
+    OutRenderData.BoneBindPoseTransforms.Add(BindTransform);
 }
 
 FVector FFbxLoader::TransformToTranslation(FbxAMatrix BindMatrix)
@@ -569,6 +603,53 @@ FVector FFbxLoader::TransformToScale(FbxAMatrix BindMatrix)
     return FVector(static_cast<float>(BindMatrix.GetS()[0]),
         static_cast<float>(BindMatrix.GetS()[1]),
         static_cast<float>(BindMatrix.GetS()[2]));
+}
+
+bool FFbxLoader::FBXConvertScene()
+{
+    // 엔진의 목표 좌표계 정의 (Unreal Engine 기준)
+   //    - Up: Z 축 (eZAxis)
+   //    - Forward Axis Determination: Requires Parity based on Up & Handedness to achieve X-Forward.
+   //    - Handedness: 왼손 좌표계 (eLeftHanded)
+    FbxAxisSystem::EUpVector UpVector = FbxAxisSystem::eZAxis;
+    FbxAxisSystem::EFrontVector FrontVector = FbxAxisSystem::eParityEven;
+    FbxAxisSystem::ECoordSystem CoordSystem = FbxAxisSystem::eLeftHanded;
+    FbxAxisSystem EngineAxisSystem(UpVector, FrontVector, CoordSystem);
+
+    // FBX 파일의 원본 좌표계 가져오기
+    FbxAxisSystem SourceAxisSystem = Scene->GetGlobalSettings().GetAxisSystem();
+
+    FbxAMatrix& matrix = Scene->GetRootNode()->EvaluateGlobalTransform();
+
+    //좌표계가 다른 경우에만 변환 수행
+    if (SourceAxisSystem != EngineAxisSystem)
+    {
+        OutputDebugStringA("Info: Source coordinate system differs from engine. Converting scene...\n");
+
+        //FbxRootNodeUtility::RemoveAllFbxRoots(Scene);
+
+        FbxAxisSystem AxisSystem = Scene->GetGlobalSettings().GetAxisSystem();
+
+        // FBX SDK를 사용하여 씬 전체의 좌표계를 변환합니다.
+        // 이 함수는 노드 변환, 애니메이션 커브 등을 재귀적으로 수정합니다.
+        //EngineAxisSystem.ConvertScene(Scene);
+        EngineAxisSystem.DeepConvertScene(Scene);
+
+    }
+    else
+    {
+        OutputDebugStringA("Info: Source coordinate system already matches engine. No conversion needed.\n");
+    }
+
+    FbxAMatrix& aftermatrix = Scene->GetRootNode()->EvaluateGlobalTransform();
+
+
+    // 애니메이션 평가기 리셋 (좌표계 변환 후 필요)
+    // 변환으로 인해 노드/커브 데이터가 변경되었을 수 있으므로 평가기를 리셋합니다.
+    Scene->GetAnimationEvaluator()->Reset();
+
+
+    return true;
 }
 
 std::unique_ptr<FSkeletalMeshRenderData> FFbxManager::LoadFbxSkeletalMeshAsset(const FWString& FilePath)

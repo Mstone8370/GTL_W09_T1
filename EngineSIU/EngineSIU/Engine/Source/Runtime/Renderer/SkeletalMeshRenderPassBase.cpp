@@ -9,6 +9,7 @@
 #include "UObject/Casts.h"
 #include "Editor/PropertyEditor/ShowFlags.h"
 #include "Engine/Asset/SkeletalMeshAsset.h"
+#include <stack>
 
 class UEditorEngine;
 
@@ -149,18 +150,101 @@ void FSkeletalMeshRenderPassBase::UpdateObjectConstant(const FMatrix& WorldMatri
 
 FVector FSkeletalMeshRenderPassBase::SkinVertexPosition(const FSkeletalMeshVertex& Vertex, const FSkeletalMeshRenderData& RenderData) const
 {
-    FVector Result = { 0, 0, 0 };
+    FVector OriginalPos(Vertex.X, Vertex.Y, Vertex.Z);
+    FVector SkinnedPos(0.f, 0.f, 0.f);
+    float TotalWeight = 0.f;
 
-    for (int i = 0; i < 4; ++i) {
-        int BoneIndex = Vertex.BoneIndices[i];
-        float weight = Vertex.BoneWeights[i];
-        if (weight > 0.f && BoneIndex >= 0 && BoneIndex < RenderData.BoneBindPoseTransforms.Num())
+    for (int i = 0; i < 4; i++) {
+        int32 BoneIndex = Vertex.BoneIndices[i];
+        float Weight = Vertex.BoneWeights[i];
+        if (Weight > 0.f
+            && BoneIndex >= 0 && BoneIndex < RenderData.BoneBindPoseTransforms.Num() && BoneIndex < RenderData.BoneLocalTransforms.Num())
         {
-            FMatrix SkinMatrix = RenderData.BoneBindPoseTransforms[BoneIndex].ToMatrixWithScale();
-            FVector Pos(Vertex.X, Vertex.Y, Vertex.Z);
-            FVector Transformed = SkinMatrix.TransformPosition(Pos);
-            Result = Result + (FVector{ Transformed.X, Transformed.Y, Transformed.Z } *weight);
+            FTransform CurrentGlobal = ComputeGlobalTransform(RenderData, BoneIndex, RenderData.BoneLocalTransforms);
+
+            // 바인드 포즈 (글로벌)
+            const FTransform& BindGlobal = RenderData.BoneBindPoseTransforms[BoneIndex];
+            FMatrix Current = CurrentGlobal.ToMatrixWithScale();
+            FMatrix Bind = BindGlobal.ToMatrixWithScale();
+            Bind = Bind.Inverse(Bind);
+
+            FMatrix SkinMatrix = Current * Bind;
+            SkinnedPos += SkinMatrix.TransformPosition(OriginalPos) * Weight;
+            TotalWeight += Weight;
         }
     }
+
+    if (TotalWeight <= 0.f) {
+        return OriginalPos;
+    }
+
+    if (TotalWeight < 1.f) {
+        SkinnedPos += OriginalPos * (1.f - TotalWeight);
+    }
+    return SkinnedPos;
+    //FVector Result = { 0, 0, 0 };
+    //FVector Pos(Vertex.X, Vertex.Y, Vertex.Z);
+
+    //for (int i = 0; i < 4; ++i) {
+    //    int BoneIndex = Vertex.BoneIndices[i];
+    //    float weight = Vertex.BoneWeights[i];
+
+    //    if (weight > 0.f && BoneIndex >= 0 && BoneIndex < RenderData.BoneBindPoseTransforms.Num() && BoneIndex < RenderData.BoneLocalTransforms.Num())
+    //    {
+    //        /*const FTransform& CurrentPose = RenderData.BoneLocalTransforms[BoneIndex];
+    //        const FTransform& BindPose = RenderData.BoneBindPoseTransforms[BoneIndex];
+    //        
+    //        FMatrix SkinMatrix = (CurrentPose.ToMatrixWithScale()) * FMatrix::Inverse(BindPose.ToMatrixWithScale());
+
+    //        Result += SkinMatrix.TransformPosition(Pos) * weight;*/
+
+    //        FTransform GlobalPose = ComputeGlobalTransform(RenderData, BoneIndex, RenderData.BoneLocalTransforms);
+    //        //FTransform BindPose = ComputeGlobalTransform(RenderData, BoneIndex, RenderData.BoneBindPoseTransforms);
+
+    //        //FMatrix SkinMatrix = RenderData.BoneLocalTransforms[BoneIndex].ToMatrixWithScale() * FMatrix::Inverse(RenderData.BoneBindPoseTransforms[BoneIndex].ToMatrixWithScale());
+    //        //FMatrix SkinMatrix = GlobalPose.ToMatrixWithScale() * FMatrix::Inverse(BindPose.ToMatrixWithScale());
+    //        FMatrix SkinMatrix = GlobalPose.ToMatrixWithScale() * FMatrix::Inverse(RenderData.BoneBindPoseTransforms[BoneIndex].ToMatrixWithScale());
+    //        Result += SkinMatrix.TransformPosition(Pos) * weight;
+
+
+    //        /*FMatrix SkinMatrix = RenderData.BoneBindPoseTransforms[BoneIndex].ToMatrixWithScale();
+    //        FVector Pos(Vertex.X, Vertex.Y, Vertex.Z);
+    //        FVector Transformed = SkinMatrix.TransformPosition(Pos);
+    //        Result = Result + (FVector{ Transformed.X, Transformed.Y, Transformed.Z } *weight);*/
+    //    }
+    //}
+    //return Result;
+}
+
+FTransform FSkeletalMeshRenderPassBase::ComputeGlobalTransform(const FSkeletalMeshRenderData& RenderData, int32 BoneIndex, const TArray<FTransform>& LocalTransforms) const
+{
+    std::stack<FTransform> TransformStack;
+
+    int32 CurrentIndex = BoneIndex; 
+    while (CurrentIndex >= 0)
+    {
+        TransformStack.push(LocalTransforms[CurrentIndex]);
+        CurrentIndex = RenderData.BoneParents[CurrentIndex];
+    }
+
+    FTransform Result = TransformStack.top();
+    TransformStack.pop();
+    
+    while (!TransformStack.empty())
+    {
+        Result = Result * TransformStack.top();
+        TransformStack.pop();
+    }
+
     return Result;
+    /*FTransform Result = LocalTransforms[BoneIndex];
+
+    int32 ParentIndex = RenderData.BoneParents[BoneIndex];
+    while (ParentIndex >= 0)
+    {
+        Result = LocalTransforms[ParentIndex] * Result;
+        ParentIndex = RenderData.BoneParents[ParentIndex];
+    }
+
+    return Result;*/
 }

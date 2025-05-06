@@ -12,7 +12,7 @@ struct FMatrix;
 struct alignas(16) FQuat
 {
 public:
-    float W, X, Y, Z;
+    float X, Y, Z, W;
 
     using FReal = float;
 
@@ -21,15 +21,15 @@ public:
 public:
     // 기본 생성자
     FQuat()
-        : W(1.0f), X(0.0f), Y(0.0f), Z(0.0f)
+        : X(0.0f), Y(0.0f), Z(0.0f), W(1.0f)
     {}
 
     // FQuat 생성자 추가: 회전 축과 각도를 받아서 FQuat 생성
     FQuat(const FVector& Axis, float Angle);
 
     // W, X, Y, Z 값으로 초기화
-    FQuat(float InW, float InX, float InY, float InZ)
-        : W(InW), X(InX), Y(InY), Z(InZ)
+    FQuat( float InX, float InY, float InZ, float InW)
+        : X(InX), Y(InY), Z(InZ), W(InW)
     {}
 
     FQuat(const FMatrix& InMatrix);
@@ -62,9 +62,6 @@ public:
 
     // 쿼터니언 정규화 (단위 쿼터니언으로 만듬)
     void Normalize(float Tolerance = SMALL_NUMBER);
-
-    // 단위 쿼터니언 Inverse 구현 (단위 쿼터니언 가정) 
-    FQuat Inverse() const;
 
     /** 정규화된 쿼터니언을 가져옵니다. */
     FORCEINLINE FQuat GetNormalized(float Tolerance = SMALL_NUMBER) const

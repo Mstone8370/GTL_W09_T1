@@ -311,11 +311,6 @@ FRotator FQuat::Rotator() const
     return RotatorFromQuat;
 }
 
-FQuat FQuat::Inverse() const
-{
-    return FQuat(-X, -Y, -Z, W);
-}
-
 FString FQuat::ToString() const
 {
     return FString::Printf(TEXT("X=%.9f Y=%.9f Z=%.9f W=%.9f"), X, Y, Z, W);

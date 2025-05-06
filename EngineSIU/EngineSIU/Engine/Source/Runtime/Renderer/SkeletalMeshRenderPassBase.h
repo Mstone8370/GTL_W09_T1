@@ -49,6 +49,9 @@ protected:
     void UpdateObjectConstant(const FMatrix& WorldMatrix, const FVector4& UUIDColor, bool bIsSelected) const;
 
     FVector SkinVertexPosition(const FSkeletalMeshVertex& Vertex,const FSkeletalMeshRenderData& RenderData) const;
+
+    FTransform ComputeGlobalTransform(const FSkeletalMeshRenderData& RenderData, int32 BoneIndex, const TArray<FTransform>& LocalTransforms) const;
+
  
     FDXDBufferManager* BufferManager;
     FGraphicsDevice* Graphics;

@@ -31,6 +31,8 @@ private:
     FVector TransformToTranslation(FbxAMatrix BindMatrix);
     FQuat TransformToRotation(FbxAMatrix BindMatrix);
     FVector TransformToScale(FbxAMatrix BindMatrix);
+
+    bool FBXConvertScene();
 };
 
 class FFbxManager
