@@ -7,6 +7,7 @@
 #include "Asset/SkeletalMeshAsset.h"
 #include "UObject/ObjectFactory.h"
 #include "SkeletalMesh.h"
+#include "Misc/Paths.h"
 
 struct FVertexKey
 {
@@ -1093,9 +1094,8 @@ void FFbxLoader::SetMaterialTexture(FbxSurfaceMaterial* Mtrl, const char* InText
     //FWString InTexturePath = OutObjInfo.FilePath + OutFStaticMesh.Materials[MaterialIndex].TextureInfos[SlotIdx].InTexturePath.ToWideString();
     if (FObjLoader::CreateTextureFromFile(TexturePath))
     {
-        OutFObjMaterialInfo.TextureInfos[SlotIdx].TexturePath = TexturePath;
-        OutFObjMaterialInfo.TextureInfos[SlotIdx].bIsSRGB = true;
-        OutFObjMaterialInfo.TextureFlag |= static_cast<uint16>(EMaterialTextureFlags::MTF_Diffuse);
+        OutFObjMaterialInfo.SetTextureForSlot(InSlotIdx, TexturePath,
+            FPaths::GetFileNameWithoutExtensionW(TexturePath));
     }
 }
 

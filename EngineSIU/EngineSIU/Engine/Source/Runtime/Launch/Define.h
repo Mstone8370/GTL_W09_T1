@@ -118,13 +118,28 @@ struct FObjMaterialInfo
     float IOR = 1.5f;                                              // Ni: Index of Refraction
     float Transparency = 0.f;                                      // d or Tr: Transparency of surface
     float BumpMultiplier = 1.f;                                    // -bm: Bump Multiplier
-    uint32 IlluminanceModel;                                       // illum: illumination Model between 0 and 10.
+    uint32 IlluminanceModel = 0;                                       // illum: illumination Model between 0 and 10.
 
     float Metallic = 0.0f;                                         // Pm: Metallic
     float Roughness = 0.5f;                                        // Pr: Roughness
     
     /* Texture */
     TArray<FTextureInfo> TextureInfos;          //EMaterialTextureSlots 와 순서가 동일해야함
+
+    FObjMaterialInfo()
+    {
+        // 생성자에서 TextureInfos 배열 크기 미리 할당 (MTS_MAX 사용)
+        TextureInfos.SetNum(static_cast<int32>(EMaterialTextureSlots::MTS_MAX));
+    }
+
+    /**
+     * @brief 특정 텍스처 슬롯에 텍스처 정보를 설정하고 관련 플래그를 업데이트합니다.
+     * @param Slot 텍스처를 설정할 슬롯.
+     * @param InTexturePath 텍스처 파일의 전체 경로.
+     * @param InTextureName 텍스처 파일의 이름.
+     */
+    void SetTextureForSlot(EMaterialTextureSlots Slot, const FWString& InTexturePath,
+        const FWString& InTextureName);
 };
 
 struct FVertexTexture

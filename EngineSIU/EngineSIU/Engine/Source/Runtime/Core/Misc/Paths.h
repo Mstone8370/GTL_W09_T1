@@ -65,17 +65,32 @@ public:
         std::filesystem::path ReturnPath = *_Path;
         return ReturnPath.filename().string();
     }
+    static FWString GetFileNameW(const FWString& _Path)
+    {
+        std::filesystem::path ReturnPath = _Path;
+        return ReturnPath.filename().wstring();
+    }
 
     static FString GetFileNameWithoutExtension(const FString& _Path)
     {
         std::filesystem::path ReturnPath = *_Path;
         return ReturnPath.stem().string();
     }
+    static FWString GetFileNameWithoutExtensionW(const FWString& _Path)
+    {
+        std::filesystem::path ReturnPath = _Path;
+        return ReturnPath.stem().wstring();
+    }
 
     static FString GetExtension(const FString& _Path)
     {
         std::filesystem::path ReturnPath = *_Path;
         return ReturnPath.extension().string();
+    }
+    static FWString GetExtensionW(const FWString& _Path)
+    {
+        std::filesystem::path ReturnPath = _Path;
+        return ReturnPath.extension().wstring();
     }
     
 };
