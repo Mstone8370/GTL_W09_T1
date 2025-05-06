@@ -17,17 +17,21 @@ public:
 
     bool LoadFBX(const FString& InFilePath);
     bool ParseFBX(const FString& FbxFilePath, FFbxInfo& OutFbxInfo);
-    void ParseFbxNodeRecursive(FbxNode* Node, FFbxInfo& OutFbxInfo);
     void ParseMesh(FbxNode* Node, FFbxInfo& OutFbxInfo);
     void ParseBone(FbxNode* Node, FFbxInfo& OutFbxInfo);
+    void PostProcessBone(FFbxInfo& OutFbxInfo);
+    void ParseBoneRecursive(FbxNode* Node, FFbxInfo& OutFbxInfo);
+    void ParseMeshesRecursive(FbxNode* Node, FFbxInfo& OutFbxInfo);
+    TArray<FbxPose*> GetBindPoses(FbxScene* Scene);
     void ParseMaterial(FbxNode* Node, FFbxInfo& OutFbxInfo);
-    FMatrix ConvertFbxMatrixToFMatrix(const FbxAMatrix& fbxMat);
+    FMatrix ConvertFbxMatrixToFMatrix(const FbxMatrix& fbxMat);
     bool CreateTextureFromFile(const FWString& Filename, bool bIsSRGB = true);
     FbxScene* GetScene() const { return Scene; }
 private:
     FbxManager* Manager;
     FbxImporter* Importer;
     FbxScene* Scene;
+    TMap<FString, int32> BoneNameToIndex;
 };
 
 class FFbxManager
@@ -45,12 +49,17 @@ public:
 
     static USkeletalMesh* CreateSkeletalMesh(const FString& filePath);
 
+    static FVector SkinVertexPosition(const FSkeletalMeshVertex& vertex, const TArray<Bone>& bones);
+
     static void ConvertRawToSkeletalMeshRenderData(const FFbxInfo& Raw, FSkeletalMeshRenderData& Cooked);
 
     static void ConvertRawToStaticMeshRenderData(const FFbxInfo& Raw, FStaticMeshRenderData& Cooked);
 
     static UMaterial* CreateMaterial(FMaterialInfo materialInfo);
 
+    /*static void RotateBone(FSkeletalMeshRenderData& SkeletalMesh, int32 BoneIndex, const FRotator& Rotation);
+    static void TranslateBone(FSkeletalMeshRenderData& SkeletalMesh, int32 BoneIndex, const FVector& Translation);*/
+    static void UpdateBoneGlobalTransformRecursive(TArray<Bone>& Bones, Bone& CurrentBone);
 private:
     static FFbxLoader FbxLoader;
 };

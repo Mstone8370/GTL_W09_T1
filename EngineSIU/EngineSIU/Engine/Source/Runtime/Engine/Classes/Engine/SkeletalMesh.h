@@ -17,7 +17,7 @@ public:
     const TArray<FMeshMaterial*>& GetMaterials() const { return materials; }
     uint32 GetMaterialIndex(FName MaterialSlotName) const;
     void GetUsedMaterials(TArray<UMaterial*>& OutMaterial) const;
-    const FSkeletalMeshRenderData* GetRenderData() const;
+    FSkeletalMeshRenderData* GetRenderData() const;
 
     //ObjectName은 경로까지 포함
     FWString GetOjbectName() const;

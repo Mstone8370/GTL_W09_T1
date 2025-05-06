@@ -9,6 +9,7 @@
 #include "Math/Vector.h"
 #include "Math/Vector4.h"
 #include "Math/Matrix.h"
+#include "Math/Transform.h"
 
 #define _TCHAR_DEFINED
 #include <d3d11.h>
@@ -90,7 +91,11 @@ struct FFbxBone
 {
     FString Name;
     int ParentIndex;
-    FMatrix SkinningMatrix;
+    TArray<int> ChildrenIndex;
+    FMatrix BindPose;
+    FMatrix InverseBindPose;
+    FMatrix GlobalTransform;
+    FMatrix LocalTransform;
     // (필요시 글로벌/로컬 트랜스폼, 본 인덱스 등 추가)
 };
 

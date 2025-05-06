@@ -7,7 +7,11 @@
 #include "Asset/SkeletalMeshAsset.h"
 #include "Asset/StaticMeshAsset.h"
 #include "AssetManager.h"
-#include <fbxsdk/utils/fbxgeometryconverter.h>
+
+#include "Math/Transform.h"
+#include <fbxsdk.h>
+
+FFbxLoader FFbxManager::FbxLoader;
 
 FFbxLoader::FFbxLoader()
     : Manager(nullptr)
@@ -52,8 +56,16 @@ bool FFbxLoader::LoadFBX(const FString& InFilePath)
     }
 
     FbxGeometryConverter converter(Manager);
-    // 씬 전체를 삼각형화 (원본 메시를 삼각형으로 대체)
-    converter.Triangulate(Scene, /*replace=*/true);
+    converter.Triangulate(Scene, true);
+
+    //1. 씬 전체를 DirectX 좌표계(Z-up)로 변환
+    FbxAxisSystem axisSystem(
+        FbxAxisSystem::eZAxis,      // Up 벡터 = Z축
+        FbxAxisSystem::eParityEven,  // Front 벡터 = +X축 (ParityEven)
+        FbxAxisSystem::eLeftHanded  // 좌표계 = 왼손
+    );
+    //2. 씬에 적용
+    axisSystem.DeepConvertScene(Scene);
 
     return bRet;
 }
@@ -92,30 +104,43 @@ bool FFbxLoader::ParseFBX(const FString& FbxFilePath, FFbxInfo& OutFbxInfo)
     FbxNode* RootNode = Scene->GetRootNode();
     if (!RootNode) return false;
 
-    ParseFbxNodeRecursive(RootNode, OutFbxInfo);
+    ParseBoneRecursive(RootNode, OutFbxInfo);
+    ParseMeshesRecursive(RootNode, OutFbxInfo);
+
+    PostProcessBone(OutFbxInfo);
 
     return true;
 }
 
-void FFbxLoader::ParseFbxNodeRecursive(FbxNode* Node, FFbxInfo& OutFbxInfo)
-{
-    // 메시 파싱
-    if (Node->GetMesh())
-        ParseMesh(Node, OutFbxInfo);
+void FFbxLoader::PostProcessBone(FFbxInfo& OutFbxInfo) {
+    for (int32 i = 0; i < OutFbxInfo.Bones.Num(); ++i) {
+        FFbxBone& Bone = OutFbxInfo.Bones[i];
+        if (Bone.ParentIndex != -1) {
+            OutFbxInfo.Bones[Bone.ParentIndex].ChildrenIndex.Add(i);
+        }
+    }
+}
 
+void FFbxLoader::ParseBoneRecursive(FbxNode* Node, FFbxInfo& OutFbxInfo)
+{
     // 본 파싱
     if (Node->GetNodeAttribute() && Node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
         ParseBone(Node, OutFbxInfo);
 
-    // 머티리얼 파싱
-    ParseMaterial(Node, OutFbxInfo);
-
-    // 애니메이션 파싱 (필요시)
-    // ParseAnimation(Node, OutFbxInfo);
-
     // 자식 노드 재귀
     for (int i = 0; i < Node->GetChildCount(); ++i)
-        ParseFbxNodeRecursive(Node->GetChild(i), OutFbxInfo);
+        ParseBoneRecursive(Node->GetChild(i), OutFbxInfo);
+}
+
+void FFbxLoader::ParseMeshesRecursive(FbxNode* Node, FFbxInfo& OutFbxInfo)
+{
+    if (Node->GetMesh())
+        ParseMesh(Node, OutFbxInfo);
+
+    ParseMaterial(Node, OutFbxInfo);
+
+    for (int i = 0; i < Node->GetChildCount(); ++i)
+        ParseMeshesRecursive(Node->GetChild(i), OutFbxInfo);
 }
 
 void FFbxLoader::ParseMesh(FbxNode* Node, FFbxInfo& OutFbxInfo)
@@ -126,9 +151,32 @@ void FFbxLoader::ParseMesh(FbxNode* Node, FFbxInfo& OutFbxInfo)
     FFbxMesh OutMesh;
     OutMesh.Name = Node->GetName();
 
-    std::unordered_map<std::string, int> VertexMap;
+    TMap<FString, int> VertexMap;
     TArray<FFbxVertex> Vertices;
     TArray<uint32> Indices;
+
+    // 1. 컨트롤포인트별 본/가중치 임시 테이블
+    TMap<int, std::vector<std::pair<int, float>>> ControlPointBoneMap;
+
+    int skinCount = Mesh->GetDeformerCount(FbxDeformer::eSkin);
+    for (int s = 0; s < skinCount; ++s) {
+        FbxSkin* skin = (FbxSkin*)Mesh->GetDeformer(s, FbxDeformer::eSkin);
+        int clusterCount = skin->GetClusterCount();
+        for (int c = 0; c < clusterCount; ++c) {
+            FbxCluster* cluster = skin->GetCluster(c);
+            FbxNode* BoneNode = cluster->GetLink();
+            FString BoneName = BoneNode->GetName();
+            int boneIndex = BoneNameToIndex[BoneName]; // 본 이름→인덱스 매핑 테이블 사용
+            int* indices = cluster->GetControlPointIndices();
+            double* weights = cluster->GetControlPointWeights();
+            int count = cluster->GetControlPointIndicesCount();
+            for (int i = 0; i < count; ++i) {
+                int ctrlPtIdx = indices[i];
+                float weight = (float)weights[i];
+                ControlPointBoneMap[ctrlPtIdx].push_back({ boneIndex, weight });
+            }
+        }
+    }
 
     int PolyCount = Mesh->GetPolygonCount();
     int PolyIndex = 0;
@@ -162,26 +210,37 @@ void FFbxLoader::ParseMesh(FbxNode* Node, FFbxInfo& OutFbxInfo)
                     Normal = FVector((float)n[0], (float)n[1], (float)n[2]);
                 }
             }
+            FFbxVertex v;
+            v.Position = Position;
+            v.Normal = Normal;
+            v.UV = UV;
 
-            // string 키 생성 (위치 인덱스/노멀/UV)
-            std::string Key = std::to_string(ctrlPtIdx) + "/" +
-                std::to_string(Normal.X) + "," + std::to_string(Normal.Y) + "," + std::to_string(Normal.Z) + "/" +
-                std::to_string(UV.X) + "," + std::to_string(UV.Y);
+            // BoneIndices/BoneWeights 초기화
+            for (int k = 0; k < 4; ++k) {
+                v.BoneIndices[k] = 0;
+                v.BoneWeights[k] = 0.0f;
+            }
 
-            int VertIdx;
-            auto it = VertexMap.find(Key);
-            if (it != VertexMap.end()) {
-                VertIdx = it->second;
+            // BoneIndices/BoneWeights 할당
+            if (ControlPointBoneMap.Contains(ctrlPtIdx)) {
+                auto& influences = ControlPointBoneMap[ctrlPtIdx];
+                // 가장 큰 4개만 사용
+                std::partial_sort(influences.begin(), influences.begin() + std::min(4, (int)influences.size()), influences.end(),
+                    [](const auto& a, const auto& b) { return a.second > b.second; });
+                float totalWeight = 0.0f;
+                for (int k = 0; k < std::min(4, (int)influences.size()); ++k) {
+                    v.BoneIndices[k] = influences[k].first;
+                    v.BoneWeights[k] = influences[k].second;
+                    totalWeight += influences[k].second;
+                }
+                // 노멀라이즈
+                if (totalWeight > 0.0f) {
+                    for (int k = 0; k < 4; ++k)
+                        v.BoneWeights[k] /= totalWeight;
+                }
             }
-            else {
-                FFbxVertex v;
-                v.Position = Position;
-                v.Normal = Normal;
-                v.UV = UV;
-                VertIdx = Vertices.Num();
-                Vertices.Add(v);
-                VertexMap[Key] = VertIdx;
-            }
+            int VertIdx = Vertices.Num();
+            Vertices.Add(v);
             Indices.Add(VertIdx);
             ++PolyIndex;
         }
@@ -257,11 +316,30 @@ void FFbxLoader::ParseBone(FbxNode* Node, FFbxInfo& OutFbxInfo)
 {
     FFbxBone Bone;
     Bone.Name = Node->GetName();
-    Bone.SkinningMatrix = ConvertFbxMatrixToFMatrix(Node->EvaluateGlobalTransform());
 
-    // 부모 인덱스 찾기 (부모가 스켈레톤 노드일 때만)
+    // 부모 인덱스 처리
     FbxNode* Parent = Node->GetParent();
     Bone.ParentIndex = -1;
+    Bone.ChildrenIndex.Empty();
+
+    // 1. 글로벌 트랜스폼 추출 (씬 변환 후)
+    FbxAMatrix FbxGlobalTransform = Node->EvaluateGlobalTransform();
+    Bone.GlobalTransform = ConvertFbxMatrixToFMatrix(FbxGlobalTransform);
+
+    if (Parent && Parent->GetNodeAttribute() && Parent->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
+    {
+        // 2. 로컬 트랜스폼 추출 (부모 기준)
+        FbxAMatrix FbxParentGlobalTransform = Parent->EvaluateGlobalTransform();
+        FMatrix ParentGlobalMatrix = ConvertFbxMatrixToFMatrix(FbxParentGlobalTransform);
+        Bone.LocalTransform = Bone.GlobalTransform * FMatrix::Inverse(ParentGlobalMatrix);
+    }
+    else
+    {
+        Bone.LocalTransform = Bone.GlobalTransform;
+    }
+    Bone.BindPose = Bone.GlobalTransform;
+    Bone.InverseBindPose = FMatrix::Inverse(Bone.BindPose);
+
     if (Parent && Parent->GetNodeAttribute() && Parent->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
     {
         FString ParentName = Parent->GetName();
@@ -276,6 +354,21 @@ void FFbxLoader::ParseBone(FbxNode* Node, FFbxInfo& OutFbxInfo)
     }
 
     OutFbxInfo.Bones.Add(Bone);
+
+    BoneNameToIndex[Bone.Name] = OutFbxInfo.Bones.Num() - 1;
+}
+
+TArray<FbxPose*> FFbxLoader::GetBindPoses(FbxScene* Scene)
+{
+    TArray<FbxPose*> BindPoses;
+    for (int i = 0; i < Scene->GetPoseCount(); ++i)
+    {
+        FbxPose* Pose = Scene->GetPose(i);
+        if (Pose->IsBindPose()) {
+            BindPoses.Add(Pose);
+        }
+    }
+    return BindPoses;
 }
 
 void FFbxLoader::ParseMaterial(FbxNode* Node, FFbxInfo& OutFbxInfo)
@@ -319,7 +412,7 @@ void FFbxLoader::ParseMaterial(FbxNode* Node, FFbxInfo& OutFbxInfo)
     }
 }
 
-FMatrix FFbxLoader::ConvertFbxMatrixToFMatrix(const FbxAMatrix& fbxMat)
+FMatrix FFbxLoader::ConvertFbxMatrixToFMatrix(const FbxMatrix& fbxMat)
 {
     FMatrix result;
     for (int row = 0; row < 4; ++row)
@@ -344,8 +437,6 @@ bool FFbxLoader::CreateTextureFromFile(const FWString& Filename, bool bIsSRGB)
 
     return true;
 }
-
-FFbxLoader FFbxManager::FbxLoader;
 
 FStaticMeshRenderData* FFbxManager::LoadFbxStaticMeshAsset(const FString& PathFileName)
 {
@@ -479,6 +570,22 @@ USkeletalMesh* FFbxManager::CreateSkeletalMesh(const FString& filePath)
     return SkeletalMesh;
 }
 
+FVector FFbxManager::SkinVertexPosition(const FSkeletalMeshVertex& vertex, const TArray<Bone>& bones) {
+    FVector result = { 0.0f, 0.0f, 0.0f };
+
+    int count = 0;
+    for (int i = 0; i < 4; ++i) {
+        int boneIndex = vertex.BoneIndices[i];
+        float weight = vertex.BoneWeights[i];
+        if (weight > 0.0f && boneIndex >= 0 && boneIndex < bones.Num()) {
+            FVector transformed = bones[boneIndex].skinningMatrix.TransformPosition(FVector(vertex.X, vertex.Y, vertex.Z));
+            result = result + (transformed * weight);
+        }
+    }
+
+    return result;
+}
+
 void FFbxManager::ConvertRawToSkeletalMeshRenderData(const FFbxInfo& Raw, FSkeletalMeshRenderData& Cooked)
 {
     Cooked.ObjectName = Raw.ObjectName;
@@ -506,6 +613,11 @@ void FFbxManager::ConvertRawToSkeletalMeshRenderData(const FFbxInfo& Raw, FSkele
             NewVtx.G = Vtx.Color.Y;
             NewVtx.B = Vtx.Color.Z;
             NewVtx.A = 1.0f; // 필요시 Vtx.Color.W
+            // Bone 정보 복사
+            for (int k = 0; k < 4; ++k) {
+                NewVtx.BoneIndices[k] = Vtx.BoneIndices[k];
+                NewVtx.BoneWeights[k] = Vtx.BoneWeights[k];
+            }
             Cooked.Vertices.Add(NewVtx);
         }
 
@@ -532,7 +644,12 @@ void FFbxManager::ConvertRawToSkeletalMeshRenderData(const FFbxInfo& Raw, FSkele
         Bone NewBone;
         NewBone.Name = bone.Name;
         NewBone.ParentIndex = bone.ParentIndex;
-        NewBone.BindPose = bone.SkinningMatrix;
+        NewBone.ChildrenIndex = bone.ChildrenIndex;
+        NewBone.GlobalTransform = bone.GlobalTransform;
+        NewBone.LocalTransform = bone.LocalTransform;
+        NewBone.BindPose = bone.BindPose;
+        NewBone.InverseBindPose = bone.InverseBindPose;
+        NewBone.skinningMatrix = NewBone.InverseBindPose * NewBone.GlobalTransform;
         Cooked.Bones.Add(NewBone);
     }
 
@@ -635,4 +752,58 @@ UMaterial* FFbxManager::CreateMaterial(FMaterialInfo materialInfo)
     newMaterial->SetMaterialInfo(materialInfo);
     AssetManager->GetMaterials().Add(materialInfo.MaterialName, newMaterial);
     return newMaterial;
+}
+
+//void FFbxManager::RotateBone(FSkeletalMeshRenderData& SkeletalMesh, int32 BoneIndex, const FRotator& Rotation)
+//{
+//    if (!SkeletalMesh.Bones.IsValidIndex(BoneIndex)) return;
+//
+//    Bone& TargetBone = SkeletalMesh.Bones[BoneIndex];
+//
+//    TargetBone.LocalTransform = Rotation.ToMatrix() * TargetBone.LocalTransform;
+//
+//
+//    // 루트 본부터 계층 전체 업데이트
+//    for (Bone& RootBone : SkeletalMesh.Bones) {
+//        if (RootBone.ParentIndex == -1) {
+//            UpdateBoneGlobalTransformRecursive(SkeletalMesh.Bones, RootBone);
+//            break;
+//        }
+//    }
+//}
+//
+//void FFbxManager::TranslateBone(FSkeletalMeshRenderData& SkeletalMesh, int32 BoneIndex, const FVector& Translation)
+//{
+//    if (!SkeletalMesh.Bones.IsValidIndex(BoneIndex)) return;
+//
+//    // 로컬 트랜스폼에 이동 적용 (왼쪽 곱)
+//    Bone& TargetBone = SkeletalMesh.Bones[BoneIndex];
+//    TargetBone.LocalTransform = FMatrix::CreateTranslationMatrix(Translation) * TargetBone.LocalTransform;
+//
+//    // 루트 본부터 계층 전체 업데이트
+//    for (Bone& RootBone : SkeletalMesh.Bones)
+//    {
+//        if (RootBone.ParentIndex == -1)
+//        {
+//            UpdateBoneGlobalTransformRecursive(SkeletalMesh.Bones, RootBone);
+//            break;
+//        }
+//    }
+//}
+
+void FFbxManager::UpdateBoneGlobalTransformRecursive(TArray<Bone>& Bones, Bone& CurrentBone)
+{
+    if (CurrentBone.ParentIndex != -1) {
+        Bone& ParentBone = Bones[CurrentBone.ParentIndex];
+        CurrentBone.GlobalTransform = CurrentBone.LocalTransform * ParentBone.GlobalTransform;
+    }
+    else {
+        CurrentBone.GlobalTransform = CurrentBone.LocalTransform;
+    }
+
+    CurrentBone.skinningMatrix = CurrentBone.InverseBindPose * CurrentBone.GlobalTransform;
+
+    for (int ChildIndex : CurrentBone.ChildrenIndex) {
+        UpdateBoneGlobalTransformRecursive(Bones, Bones[ChildIndex]);
+    }
 }

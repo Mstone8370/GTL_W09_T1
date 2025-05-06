@@ -19,7 +19,12 @@ struct Bone
 {
     FString Name;
     int ParentIndex;
+    TArray<int> ChildrenIndex;
+    FMatrix skinningMatrix;
+    FMatrix GlobalTransform;
+    FMatrix LocalTransform;
     FMatrix BindPose;
+    FMatrix InverseBindPose;
 };
 
 struct FSkeletalMeshRenderData

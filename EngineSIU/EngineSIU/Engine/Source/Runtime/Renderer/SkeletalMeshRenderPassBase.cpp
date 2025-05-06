@@ -11,6 +11,8 @@
 #include "Engine/Asset/SkeletalMeshAsset.h"
 #include "RendererHelpers.h"
 
+#include "Engine/Classes/Engine/FbxLoader.h"
+
 class UEditorEngine;
 
 FSkeletalMeshRenderPassBase::FSkeletalMeshRenderPassBase()
@@ -74,7 +76,7 @@ void FSkeletalMeshRenderPassBase::RenderAllSkeletalMeshes(const std::shared_ptr<
             continue;
         }
 
-        const FSkeletalMeshRenderData* RenderData = Comp->GetSkeletalMesh()->GetRenderData();
+        FSkeletalMeshRenderData* RenderData = Comp->GetSkeletalMesh()->GetRenderData();
         if (RenderData == nullptr)
         {
             continue;
@@ -97,14 +99,46 @@ void FSkeletalMeshRenderPassBase::RenderAllSkeletalMeshes(const std::shared_ptr<
     }
 }
 
-void FSkeletalMeshRenderPassBase::RenderSkeletalMesh(const FSkeletalMeshRenderData* RenderData, TArray<FMeshMaterial*> Materials, TArray<UMaterial*> OverrideMaterials, int SelectedSubMeshIndex) const
+void FSkeletalMeshRenderPassBase::RenderSkeletalMesh(FSkeletalMeshRenderData* RenderData, TArray<FMeshMaterial*> Materials, TArray<UMaterial*> OverrideMaterials, int SelectedSubMeshIndex) const
 {
     UINT Stride = sizeof(FSkeletalMeshVertex);
     UINT Offset = 0;
 
-    FVertexInfo VertexInfo;
-    BufferManager->CreateVertexBuffer(RenderData->ObjectName, RenderData->Vertices, VertexInfo);
+    // 1. (중요) 원본 정점 버퍼를 복사
 
+    float DeltaAngle = 1.0f; // 프레임당 회전 증가량(도 단위)
+
+    // --- 회전 행렬 생성 (예: Y축 기준 회전) ---
+    FMatrix RotationMatrix = FRotator(0.f, 0.f, DeltaAngle).ToMatrix();
+    for (int i = 0; i < RenderData->Bones.Num(); i++)
+    {
+        RenderData->Bones[i].LocalTransform = RotationMatrix * RenderData->Bones[i].LocalTransform;
+    }
+
+    // 계층 전체 업데이트 (루트부터)
+    for (Bone& RootBone : RenderData->Bones)
+    {
+        if (RootBone.ParentIndex == -1)
+        {
+            FFbxManager::UpdateBoneGlobalTransformRecursive(RenderData->Bones, RootBone);
+            break;
+        } 
+    }
+
+    TArray<FSkeletalMeshVertex> SkinnedVertices = RenderData->Vertices;
+    for (FSkeletalMeshVertex& vertex : SkinnedVertices)
+    {
+        FVector skinnedvertex = FFbxManager::SkinVertexPosition(vertex, RenderData->Bones);
+        vertex.X = skinnedvertex.X;
+        vertex.Y = skinnedvertex.Y;
+        vertex.Z = skinnedvertex.Z;
+        // vertex.Normal = SkinVertexNormal(vertex, RenderData->Bones); // 필요시 노멀도
+    }
+
+    FVertexInfo VertexInfo;
+    BufferManager->CreateDynamicVertexBuffer(RenderData->ObjectName, SkinnedVertices, VertexInfo);
+    BufferManager->UpdateDynamicVertexBuffer(RenderData->ObjectName, SkinnedVertices);
+    
     Graphics->DeviceContext->IASetVertexBuffers(0, 1, &VertexInfo.VertexBuffer, &Stride, &Offset);
 
     FIndexInfo IndexInfo;

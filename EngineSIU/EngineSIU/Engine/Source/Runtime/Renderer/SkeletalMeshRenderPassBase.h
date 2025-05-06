@@ -40,7 +40,7 @@ protected:
 
     void RenderAllSkeletalMeshes(const std::shared_ptr<FEditorViewportClient>& Viewport);
 
-    void RenderSkeletalMesh(const FSkeletalMeshRenderData* RenderData, TArray<FMeshMaterial*> Materials, TArray<UMaterial*> OverrideMaterials, int SelectedSubMeshIndex) const;
+    void RenderSkeletalMesh(FSkeletalMeshRenderData* RenderData, TArray<FMeshMaterial*> Materials, TArray<UMaterial*> OverrideMaterials, int SelectedSubMeshIndex) const;
 
     void RenderSkeletalMesh(ID3D11Buffer* Buffer, UINT VerticesNum) const;
 

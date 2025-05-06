@@ -27,7 +27,7 @@ void USkeletalMesh::GetUsedMaterials(TArray<UMaterial*>& OutMaterial) const
     }
 }
 
-const FSkeletalMeshRenderData* USkeletalMesh::GetRenderData() const
+FSkeletalMeshRenderData* USkeletalMesh::GetRenderData() const
 {
     return RenderData.get();
 }

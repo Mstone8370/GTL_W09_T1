@@ -40,8 +40,11 @@ void UEditorEngine::Init()
 
     //LoadLevel("Saved/AutoSaves.scene");
 
+    //FFbxManager::CreateMesh("X Bot Triangle.fbx");
     //FFbxManager::CreateMesh("X Bot.fbx");
-    FFbxManager::CreateMesh("Ch20_nonPBR.fbx");
+    //FFbxManager::CreateMesh("c1280/c1280.fbx");
+    FFbxManager::CreateMesh("Mutant.fbx");
+    //FFbxManager::CreateMesh("Ch20_nonPBR.fbx");
 }
 
 void UEditorEngine::Release()
